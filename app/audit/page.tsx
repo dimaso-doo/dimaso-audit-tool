@@ -181,9 +181,9 @@ export default function AuditPage() {
                             <span className="tag">{plugin.status}</span>
                           </div>
                           <p className="muted">{plugin.note}</p>
-                          {plugin.assets.length ? (
+                          {(plugin.assets ?? []).length ? (
                             <div className="asset-evidence">
-                              {plugin.assets.map((asset) => (
+                              {(plugin.assets ?? []).map((asset) => (
                                 <div className="asset-row" key={asset.url}>
                                   <span className="tag">{asset.fileType}</span>
                                   <span className="asset-url">{asset.url}</span>

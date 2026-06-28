@@ -25,6 +25,7 @@ function pluginVersionFromUrl(raw: string): string | undefined {
 function pluginAssetFromUrl(raw: string): { slug: string; asset: WordpressPluginAssetEvidence } | undefined {
   const match = raw.match(/\/wp-content\/plugins\/([^/"'?\s]+)[^"'\s<)]*/i);
   if (!match) return undefined;
+  if (!/^[a-z0-9][a-z0-9_-]*$/i.test(match[1])) return undefined;
 
   const cleanUrl = match[0];
   const lower = cleanUrl.toLowerCase();
@@ -55,14 +56,20 @@ async function fetchWordPressPluginLatest(slug: string): Promise<string | undefi
   }
 }
 
-function chooseDetectedVersion(assets: WordpressPluginAssetEvidence[]) {
+function chooseDetectedVersion(assets: WordpressPluginAssetEvidence[], latestKnownVersion?: string) {
   const versions = assets.map((asset) => asset.detectedVersion).filter((version): version is string => Boolean(version));
-  return versions.find((version) => Boolean(semver.valid(version))) ?? versions[0];
+  const validVersions = versions.filter((version) => Boolean(semver.valid(version)));
+
+  if (latestKnownVersion && validVersions.some((version) => semver.eq(version, latestKnownVersion))) {
+    return latestKnownVersion;
+  }
+
+  return validVersions.sort(semver.rcompare)[0] ?? versions[0];
 }
 
 async function buildPluginFinding(slug: string, assets: WordpressPluginAssetEvidence[]): Promise<WordpressPluginFinding> {
-  const detectedVersion = chooseDetectedVersion(assets);
   const latestKnownVersion = await fetchWordPressPluginLatest(slug);
+  const detectedVersion = chooseDetectedVersion(assets, latestKnownVersion);
   let status: WordpressPluginFinding["status"] = "unknown";
 
   if (detectedVersion && latestKnownVersion && semver.valid(detectedVersion) && semver.valid(latestKnownVersion)) {

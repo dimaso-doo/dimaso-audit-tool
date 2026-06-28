@@ -26,4 +26,24 @@ describe("WordPress public fingerprints", () => {
     });
     expect(audit.plugins[0].assets.map((asset) => asset.fileType).sort()).toEqual(["css", "js"]);
   });
+
+  it("prefers a latest-known asset match over older library asset versions", async () => {
+    const audit = await auditWordPress("", [
+      "https://example.com/wp-content/plugins/wp-rss-aggregator/core/css/jquery-colorbox.css?ver=1.4.33",
+      "https://example.com/wp-content/plugins/wp-rss-aggregator/core/css/displays.css?ver=5.9.8",
+      "https://example.com/wp-content/plugins/wp-rss-aggregator/core/js/htmx.min.js?ver=1.9.12"
+    ]);
+
+    expect(audit.plugins[0]).toMatchObject({
+      slug: "wp-rss-aggregator",
+      detectedVersion: "5.9.8",
+      latestKnownVersion: "5.9.8",
+      status: "current"
+    });
+  });
+
+  it("ignores wildcard plugin paths that are not real slugs", async () => {
+    const audit = await auditWordPress("", ["/wp-content/plugins/*"]);
+    expect(audit.plugins).toHaveLength(0);
+  });
 });
