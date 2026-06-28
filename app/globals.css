@@ -162,7 +162,7 @@ h1 {
   box-shadow: var(--shadow);
 }
 
-.report-actions div {
+.report-actions > div:first-child {
   display: grid;
   gap: 4px;
 }
@@ -185,6 +185,38 @@ h1 {
 .report-actions button:disabled {
   cursor: wait;
   opacity: 0.7;
+}
+
+.pdf-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pdf-links a {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  border-radius: 6px;
+  padding: 0 12px;
+  color: #fff;
+  background: var(--teal);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.pdf-links a:first-child {
+  color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.pdf-links span {
+  flex-basis: 100%;
+  text-align: right;
+  font-size: 12px;
 }
 
 .print-cover {
@@ -425,6 +457,16 @@ h1 {
 
   .form {
     grid-template-columns: 1fr;
+  }
+
+  .report-actions,
+  .pdf-links {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pdf-links span {
+    text-align: left;
   }
 
   .form button {

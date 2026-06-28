@@ -28,10 +28,7 @@ export function saveReport(bytes: Uint8Array, filename: string) {
   return id;
 }
 
-export function takeReport(id: string) {
+export function getReport(id: string) {
   cleanup();
-  const report = store.get(id);
-  if (!report) return undefined;
-  store.delete(id);
-  return report;
+  return store.get(id);
 }

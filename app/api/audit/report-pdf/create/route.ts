@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     id,
     downloadUrl: `/api/audit/report-pdf?id=${encodeURIComponent(id)}`,
+    viewUrl: `/api/audit/report-pdf?id=${encodeURIComponent(id)}&view=1`,
     filename
   });
 }

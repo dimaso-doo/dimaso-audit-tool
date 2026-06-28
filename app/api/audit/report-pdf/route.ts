@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAuditPdf } from "@/lib/report/pdf";
-import { takeReport } from "@/lib/report/store";
+import { getReport } from "@/lib/report/store";
 import type { AuditResult } from "@/lib/audit/types";
 
 export function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("id");
-  const report = id ? takeReport(id) : undefined;
+  const report = id ? getReport(id) : undefined;
 
   if (report) {
+    const disposition = request.nextUrl.searchParams.get("view") === "1" ? "inline" : "attachment";
     return new NextResponse(Buffer.from(report.bytes), {
       headers: {
         "content-type": "application/pdf",
-        "content-disposition": `attachment; filename="${report.filename}"`,
+        "content-disposition": `${disposition}; filename="${report.filename}"`,
         "cache-control": "no-store"
       }
     });

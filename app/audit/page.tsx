@@ -5,18 +5,26 @@ import type { AuditResult } from "@/lib/audit/types";
 
 const scoreLabels = ["Performance", "SEO", "Accessibility", "Security", "Technical health", "Platform risk"] as const;
 
+type PdfLinks = {
+  downloadUrl: string;
+  viewUrl: string;
+  filename: string;
+};
+
 export default function AuditPage() {
   const [url, setUrl] = useState("https://example.com");
   const [result, setResult] = useState<AuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfLinks, setPdfLinks] = useState<PdfLinks | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
     setResult(null);
+    setPdfLinks(null);
 
     try {
       const response = await fetch("/api/audit", {
@@ -38,6 +46,7 @@ export default function AuditPage() {
     if (!result) return;
     setPdfLoading(true);
     setError(null);
+    setPdfLinks(null);
 
     try {
       const response = await fetch("/api/audit/report-pdf/create", {
@@ -50,9 +59,15 @@ export default function AuditPage() {
         throw new Error(data.error ?? "PDF generation failed.");
       }
 
-      const data = (await response.json()) as { downloadUrl?: string };
-      if (!data.downloadUrl) throw new Error("PDF download URL was not created.");
-      window.location.assign(data.downloadUrl);
+      const data = (await response.json()) as Partial<PdfLinks>;
+      if (!data.downloadUrl || !data.viewUrl || !data.filename) {
+        throw new Error("PDF links were not created.");
+      }
+      setPdfLinks({
+        downloadUrl: data.downloadUrl,
+        viewUrl: data.viewUrl,
+        filename: data.filename
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF generation failed.");
     } finally {
@@ -96,8 +111,19 @@ export default function AuditPage() {
                 <span>Generate a client-ready PDF from the current audit result.</span>
               </div>
               <button type="button" onClick={downloadPdf} disabled={pdfLoading}>
-                {pdfLoading ? "Preparing..." : "Download PDF"}
+                {pdfLoading ? "Preparing..." : pdfLinks ? "Regenerate PDF" : "Generate PDF"}
               </button>
+              {pdfLinks ? (
+                <div className="pdf-links">
+                  <a href={pdfLinks.viewUrl} target="_blank" rel="noreferrer">
+                    Open PDF
+                  </a>
+                  <a href={pdfLinks.downloadUrl} download={pdfLinks.filename}>
+                    Download PDF
+                  </a>
+                  <span>{pdfLinks.filename}</span>
+                </div>
+              ) : null}
             </section>
 
             <section className="print-cover">
