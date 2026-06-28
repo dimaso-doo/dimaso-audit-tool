@@ -1,8 +1,15 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import type { DiagnosisResult } from "@/lib/diagnosis/types";
 import type { OrganizationType, PrimaryGoal } from "@/config/organizationProfiles";
+
+type PdfLinks = {
+  downloadUrl: string;
+  viewUrl: string;
+  filename: string;
+  objectUrl: string;
+};
 
 const organizationOptions: Array<{ value: OrganizationType; label: string }> = [
   { value: "ngo", label: "NGO / network" },
@@ -35,14 +42,30 @@ export default function DiagnosePage() {
   const [organizationType, setOrganizationType] = useState<OrganizationType>("service_business");
   const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal>("leads");
   const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DiagnosisResult | null>(null);
+  const [pdfLinks, setPdfLinks] = useState<PdfLinks | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pdfLinks?.objectUrl) URL.revokeObjectURL(pdfLinks.objectUrl);
+    };
+  }, [pdfLinks]);
+
+  function clearPdfLinks() {
+    setPdfLinks((current) => {
+      if (current?.objectUrl) URL.revokeObjectURL(current.objectUrl);
+      return null;
+    });
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
     setResult(null);
+    clearPdfLinks();
     try {
       const response = await fetch("/api/diagnose", {
         method: "POST",
@@ -56,6 +79,40 @@ export default function DiagnosePage() {
       setError(err instanceof Error ? err.message : "Diagnosis failed.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function downloadPdf() {
+    if (!result) return;
+    setPdfLoading(true);
+    setError(null);
+    clearPdfLinks();
+
+    try {
+      const response = await fetch("/api/diagnose/report-pdf", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(result)
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error ?? "PDF generation failed.");
+      }
+
+      const host = new URL(result.site.finalUrl).hostname.replace(/[^a-z0-9.-]/gi, "-");
+      const filename = `dimaso-diagnosis-${host}.pdf`;
+      const blob = new Blob([await response.arrayBuffer()], { type: "application/pdf" });
+      const objectUrl = URL.createObjectURL(blob);
+      setPdfLinks({
+        downloadUrl: objectUrl,
+        viewUrl: objectUrl,
+        filename,
+        objectUrl
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "PDF generation failed.");
+    } finally {
+      setPdfLoading(false);
     }
   }
 
@@ -103,6 +160,27 @@ export default function DiagnosePage() {
 
         {result ? (
           <>
+            <section className="report-actions no-print">
+              <div>
+                <strong>Diagnosis report</strong>
+                <span>Generate a client-ready PDF diagnosis and internal Dimaso brief.</span>
+              </div>
+              <button type="button" onClick={downloadPdf} disabled={pdfLoading}>
+                {pdfLoading ? "Preparing..." : pdfLinks ? "Regenerate PDF" : "Generate PDF"}
+              </button>
+              {pdfLinks ? (
+                <div className="pdf-links">
+                  <a href={pdfLinks.viewUrl} target="_blank" rel="noreferrer">
+                    Open PDF
+                  </a>
+                  <a href={pdfLinks.downloadUrl} download={pdfLinks.filename}>
+                    Download PDF
+                  </a>
+                  <span>{pdfLinks.filename}</span>
+                </div>
+              ) : null}
+            </section>
+
             <section className="summary-grid">
               <div className="metric">
                 <span>Recommendation</span>

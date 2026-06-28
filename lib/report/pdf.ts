@@ -1,4 +1,5 @@
 import type { AuditResult, IssueCategory } from "@/lib/audit/types";
+import type { DiagnosisResult } from "@/lib/diagnosis/types";
 
 type PdfLine = {
   text: string;
@@ -73,6 +74,16 @@ class PdfBuilder {
     this.addLine({ text: result.universal.finalUrl, size: 18, bold: true, gapAfter: 12 });
     this.addLine({ text: `Generated: ${new Date(result.auditedAt).toLocaleString("en-US")}`, size: 10, color: [96, 112, 128] });
     this.addLine({ text: `Overall score: ${result.scores.overall}/100`, size: 16, bold: true, color: [15, 118, 110], gapAfter: 16 });
+  }
+
+  addDiagnosisCover(result: DiagnosisResult) {
+    this.current.push("0.055 0.463 0.431 rg 0 702 612 90 re f");
+    this.text("Website diagnosis report", 48, 748, 24, [255, 255, 255], true);
+    this.text("Prepared by Dimaso", 48, 718, 13, [230, 255, 251], false);
+    this.y = 660;
+    this.addLine({ text: result.site.finalUrl, size: 18, bold: true, gapAfter: 12 });
+    this.addLine({ text: `Generated: ${new Date().toLocaleString("en-US")}`, size: 10, color: [96, 112, 128] });
+    this.addLine({ text: `Recommendation: ${result.rebuildRecommendation.decision.replace(/_/g, " ")}`, size: 16, bold: true, color: [15, 118, 110], gapAfter: 16 });
   }
 
   addSection(title: string) {
@@ -249,6 +260,82 @@ export function createAuditPdf(result: AuditResult) {
   } else {
     pdf.addLine({ text: "No access-gated confirmations were detected." });
   }
+
+  return pdf.finish();
+}
+
+export function createDiagnosisPdf(result: DiagnosisResult) {
+  const pdf = new PdfBuilder();
+  pdf.addDiagnosisCover(result);
+
+  pdf.addSection("Executive Diagnosis");
+  pdf.addLine({ text: result.clientReport.executiveDiagnosis, size: 11 });
+  pdf.addLine({ text: result.rebuildRecommendation.why, size: 10, color: [51, 65, 85] });
+
+  pdf.addSection("Score Overview");
+  for (const [label, score] of Object.entries(result.scores)) {
+    pdf.addKeyValue(label.replace(/[A-Z]/g, " $&"), `${score}/100`);
+  }
+
+  pdf.addSection("Main Website Problems");
+  result.clientReport.mainWebsiteProblems.slice(0, 12).forEach((item) => pdf.addLine({ text: item }));
+
+  pdf.addSection("Business Impact");
+  result.clientReport.businessImpact.slice(0, 12).forEach((item) => pdf.addLine({ text: item }));
+
+  pdf.addSection("Content and Navigation Issues");
+  if (result.informationArchitecture.problems.length) {
+    result.informationArchitecture.problems.slice(0, 8).forEach((item) => pdf.addLine({ text: item }));
+  } else {
+    pdf.addLine({ text: "No major public IA problems detected." });
+  }
+  pdf.addKeyValue("Suggested navigation", result.informationArchitecture.suggestedTopLevelNavigation.join(", "));
+
+  pdf.addSection("Workflow / Operational Issues");
+  const weakWorkflows = result.workflowAudit.filter((workflow) => workflow.status !== "present");
+  if (weakWorkflows.length) {
+    weakWorkflows.slice(0, 12).forEach((workflow) => pdf.addLine({ text: `${workflow.workflow}: ${workflow.recommendation}` }));
+  } else {
+    pdf.addLine({ text: "No missing public workflows detected." });
+  }
+
+  pdf.addSection("Feature Gap Analysis");
+  pdf.addKeyValue("Missing critical", result.featureGapAnalysis.missingCriticalFeatures.join(", ") || "None obvious");
+  pdf.addKeyValue("Good existing", result.featureGapAnalysis.goodExistingFeatures.join(", ") || "Needs review");
+  pdf.addKeyValue("Suggested modules", result.featureGapAnalysis.suggestedModulesForRebuild.join(", ") || "Discovery needed");
+
+  pdf.addSection("Scope Estimate");
+  pdf.addKeyValue("Project type", result.scopeEstimate.projectType);
+  pdf.addKeyValue("Complexity", result.scopeEstimate.complexity);
+  pdf.addKeyValue("Timeline", result.scopeEstimate.estimatedTimeline);
+  pdf.addKeyValue("Dimaso fit", result.scopeEstimate.dimasoFit);
+  pdf.addKeyValue("Recommended modules", result.scopeEstimate.recommendedModules.join(", ") || "Discovery needed");
+
+  pdf.addSection("Content Inventory");
+  result.contentInventory.pages.slice(0, 18).forEach((page) => {
+    pdf.addLine({ text: `${page.pageType}: ${page.title ?? "Missing title"}`, size: 10, bold: true });
+    pdf.addLine({ text: `${page.url} | ${page.wordCount} words | ${page.recommendation}`, size: 8, color: [96, 112, 128], gapAfter: 5 });
+  });
+
+  pdf.addSection("7-Day Action Plan");
+  result.roadmap.sevenDay.slice(0, 8).forEach((item) => pdf.addLine({ text: item }));
+  pdf.addSection("30-Day Action Plan");
+  result.roadmap.thirtyDay.slice(0, 10).forEach((item) => pdf.addLine({ text: item }));
+  pdf.addSection("90-Day Roadmap");
+  result.roadmap.ninetyDay.slice(0, 10).forEach((item) => pdf.addLine({ text: item }));
+
+  pdf.addSection("Requires Access To Confirm");
+  if (result.clientReport.requiresAccessToConfirm.length) {
+    result.clientReport.requiresAccessToConfirm.slice(0, 12).forEach((item) => pdf.addLine({ text: item }));
+  } else {
+    pdf.addLine({ text: "No access-gated confirmations detected." });
+  }
+
+  pdf.addSection("Internal Dimaso Brief");
+  pdf.addKeyValue("Lead quality", result.internalDimasoBrief.leadQuality);
+  pdf.addKeyValue("Recommended service", result.internalDimasoBrief.recommendedServiceType);
+  pdf.addKeyValue("Likely scope", result.internalDimasoBrief.likelyProjectScope);
+  result.internalDimasoBrief.salesDiscoveryQuestions.slice(0, 8).forEach((item) => pdf.addLine({ text: `Question: ${item}` }));
 
   return pdf.finish();
 }

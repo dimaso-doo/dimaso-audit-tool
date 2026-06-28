@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { analyzeIA, featureGapAnalysis, rebuildRecommendation, scopeEstimate, workflowAudit } from "@/lib/diagnosis/analysis";
 import { contentInventory } from "@/lib/diagnosis/content-inventory";
 import { classifyPage } from "@/lib/diagnosis/page-classifier";
-import type { CrawledPage, DiagnosisFinding } from "@/lib/diagnosis/types";
+import { createDiagnosisPdf } from "@/lib/report/pdf";
+import type { CrawledPage, DiagnosisFinding, DiagnosisResult } from "@/lib/diagnosis/types";
 
 const pages: CrawledPage[] = [
   {
@@ -82,5 +83,109 @@ describe("diagnosis engine helpers", () => {
     expect(["optimization_sprint", "content_restructure", "full_rebuild", "platform_build"]).toContain(recommendation.decision);
     expect(estimate.estimatedTimeline).toMatch(/weeks/);
     expect(estimate.questionsForClient.length).toBeGreaterThan(0);
+  });
+
+  it("generates a readable PDF document for diagnosis results", () => {
+    const pdf = createDiagnosisPdf({
+      site: {
+        requestedUrl: "https://example.org",
+        finalUrl: "https://example.org/",
+        organizationType: "ngo",
+        primaryGoal: "resources",
+        crawledPages: 2
+      },
+      diagnosis: { executiveSummary: "Public diagnosis only.", findings: [], assumptions: ["Public crawl only."] },
+      scores: {
+        technicalHealth: 80,
+        contentStructure: 70,
+        iaClarity: 75,
+        conversionReadiness: 60,
+        workflowMaturity: 55,
+        trackingMaturity: 45,
+        platformScalability: 65,
+        rebuildReadiness: 70,
+        maintenanceRisk: 35
+      },
+      rebuildRecommendation: {
+        decision: "content_restructure",
+        confidence: "medium",
+        why: "Based on public diagnosis signals.",
+        evidence: ["Missing resource path"],
+        risks: ["Users may miss key resources."],
+        suggestedNextStep: "Run discovery.",
+        accessRequiredForConfirmation: ["Analytics"]
+      },
+      contentInventory: { pages: contentInventory(pages), recommendations: ["migrate: https://example.org/"] },
+      informationArchitecture: {
+        topNavigation: ["About", "Resources"],
+        footerNavigation: [],
+        problems: ["Contact path needs review."],
+        suggestedTopLevelNavigation: ["About", "Resources", "Contact"],
+        suggestedContentModel: ["Page", "Resource"],
+        missingTemplates: ["event"]
+      },
+      workflowAudit: workflowAudit(pages[0].html, contentInventory(pages), "ngo"),
+      featureGapAnalysis: {
+        missingCriticalFeatures: ["events"],
+        weakFeatures: ["newsletter"],
+        goodExistingFeatures: ["resource_library"],
+        suggestedModulesForRebuild: ["Discovery, IA and rebuild scope"]
+      },
+      technicalAudit: { issues: [], securityHeaders: { present: [], missing: [] } },
+      platformAudit: { platform: { platform: "Custom / Unknown", confidence: "low", evidence: [] }, notes: ["Public detection only."] },
+      conversionAudit: { ctaCount: 1, ctaTexts: ["Contact us"], contactOptions: ["form"], formsCount: 1, trustSignals: [], offerClarity: "moderate", weakButtons: [] },
+      trackingAudit: { detected: [], missing: [], consentHints: [] },
+      schemaAudit: {
+        jsonLdCount: 1,
+        microdataCount: 0,
+        detectedTypes: ["Organization"],
+        targetTypes: {
+          Organization: true,
+          LocalBusiness: false,
+          Product: false,
+          Article: false,
+          FAQPage: false,
+          BreadcrumbList: false
+        }
+      },
+      formAudit: { forms: [] },
+      migrationRisk: { level: "medium", reasons: ["Two pages crawled"] },
+      scopeEstimate: {
+        projectType: "content_restructure",
+        complexity: "medium",
+        estimatedTimeline: "6-10 weeks",
+        recommendedModules: ["Discovery, IA and rebuild scope"],
+        optionalModules: [],
+        accessNeeded: ["CMS/admin"],
+        questionsForClient: ["What outcome matters most?"],
+        dimasoFit: "high",
+        internalSalesNotes: ["Validate assumptions."]
+      },
+      roadmap: { sevenDay: ["Confirm goals"], thirtyDay: ["Map content"], ninetyDay: ["Rebuild templates"] },
+      clientReport: {
+        executiveDiagnosis: "The site needs content restructuring.",
+        mainRecommendation: "Run discovery.",
+        whatIsWorking: ["Site is reachable."],
+        mainWebsiteProblems: ["Content structure is unclear."],
+        businessImpact: ["Users may not find resources."],
+        roadmap: ["Confirm goals"],
+        requiresAccessToConfirm: ["Analytics"]
+      },
+      internalDimasoBrief: {
+        leadQuality: "high",
+        recommendedServiceType: "content_restructure",
+        likelyProjectScope: "medium complexity, 6-10 weeks",
+        suggestedDimasoModules: ["Discovery, IA and rebuild scope"],
+        potentialMaintenanceFit: "medium",
+        accessNeeded: ["CMS/admin"],
+        salesDiscoveryQuestions: ["What outcome matters most?"],
+        risksRedFlags: ["Unknown analytics."],
+        suggestedProposalOutline: ["Diagnosis recap"],
+        suggestedFirstEmailFollowUp: "We recommend a discovery conversation."
+      }
+    } satisfies DiagnosisResult);
+
+    expect(Buffer.from(pdf).toString("utf8", 0, 8)).toBe("%PDF-1.4");
+    expect(pdf.byteLength).toBeGreaterThan(1000);
   });
 });
