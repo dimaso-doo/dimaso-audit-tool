@@ -63,6 +63,23 @@ export default function AuditPage() {
 
         {result ? (
           <>
+            <section className="report-actions no-print">
+              <div>
+                <strong>Audit report</strong>
+                <span>Generate a client-ready PDF from the current audit result.</span>
+              </div>
+              <button type="button" onClick={() => window.print()}>
+                Download PDF
+              </button>
+            </section>
+
+            <section className="print-cover">
+              <p className="print-kicker">Website audit report</p>
+              <h1>{result.universal.finalUrl}</h1>
+              <p>Prepared by Dimaso</p>
+              <p>Generated {new Date(result.auditedAt).toLocaleString()}</p>
+            </section>
+
             <section className="summary-grid" aria-label="Scores">
               <div className="metric">
                 <span>Overall</span>
@@ -100,6 +117,7 @@ export default function AuditPage() {
 
               <div className="panel">
                 <h2>Summary</h2>
+                <p className="report-brand">by Dimaso</p>
                 <p className="pre">{result.summary}</p>
                 <div className="tag-row">
                   {result.platform.evidence.map((item) => (

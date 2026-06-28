@@ -146,6 +146,48 @@ h1 {
   background: #fff1f2;
 }
 
+.report-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 22px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.report-actions div {
+  display: grid;
+  gap: 4px;
+}
+
+.report-actions span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.report-actions button {
+  border: 0;
+  border-radius: 6px;
+  padding: 11px 16px;
+  color: #fff;
+  background: var(--coral);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.print-cover {
+  display: none;
+}
+
+.report-brand {
+  margin: -4px 0 12px;
+  color: var(--teal);
+  font-weight: 800;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -306,5 +348,75 @@ h1 {
 
   .summary-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  body {
+    background: #fff;
+    color: #111827;
+  }
+
+  .no-print,
+  .topbar,
+  .intro,
+  .error {
+    display: none !important;
+  }
+
+  .content {
+    width: 100%;
+    padding: 0;
+  }
+
+  .print-cover {
+    display: block;
+    min-height: 220px;
+    margin-bottom: 22px;
+    border-bottom: 2px solid #111827;
+  }
+
+  .print-cover h1 {
+    margin: 8px 0 14px;
+    font-size: 28px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .print-cover p {
+    margin: 6px 0;
+    color: #374151;
+  }
+
+  .print-kicker {
+    color: var(--teal) !important;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(3, 1fr);
+    break-inside: avoid;
+  }
+
+  .columns,
+  .facts {
+    grid-template-columns: 1fr;
+  }
+
+  .panel,
+  .metric,
+  .issue,
+  .plugin {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  .section {
+    break-inside: avoid;
   }
 }
