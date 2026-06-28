@@ -1,0 +1,310 @@
+:root {
+  --ink: #17212b;
+  --muted: #607080;
+  --line: #d8e0e7;
+  --paper: #f6f8f5;
+  --panel: #ffffff;
+  --teal: #0f766e;
+  --coral: #c2410c;
+  --blue: #2563eb;
+  --gold: #b45309;
+  --danger: #b91c1c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.shell {
+  min-height: 100vh;
+}
+
+.topbar {
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.topbar-inner,
+.content {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--teal);
+}
+
+.badge {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: #fff;
+  font-size: 13px;
+}
+
+.content {
+  padding: 34px 0 56px;
+}
+
+.intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 28px;
+  align-items: end;
+  margin-bottom: 26px;
+}
+
+h1 {
+  margin: 0 0 10px;
+  font-size: clamp(32px, 4vw, 54px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.lead {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.form input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  padding: 12px 10px;
+  color: var(--ink);
+}
+
+.form button {
+  min-width: 120px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 18px;
+  color: #fff;
+  background: var(--teal);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.form button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.error {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: var(--danger);
+  background: #fff1f2;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0;
+}
+
+.metric,
+.panel,
+.issue,
+.plugin {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.metric {
+  padding: 14px;
+}
+
+.metric strong {
+  display: block;
+  margin-top: 7px;
+  font-size: 24px;
+}
+
+.metric span,
+.label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.section {
+  margin-top: 24px;
+}
+
+.section h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.panel {
+  padding: 18px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 18px;
+}
+
+.fact {
+  min-width: 0;
+}
+
+.fact div:last-child {
+  overflow-wrap: anywhere;
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.issues {
+  display: grid;
+  gap: 10px;
+}
+
+.issue {
+  padding: 14px;
+  border-left: 5px solid var(--blue);
+}
+
+.issue.high,
+.issue.critical {
+  border-left-color: var(--danger);
+}
+
+.issue.medium {
+  border-left-color: var(--gold);
+}
+
+.issue.low {
+  border-left-color: var(--teal);
+}
+
+.issue-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-weight: 800;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.tag {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #334155;
+  font-size: 12px;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.plugins {
+  display: grid;
+  gap: 10px;
+}
+
+.plugin {
+  padding: 12px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.pre {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+@media (max-width: 920px) {
+  .intro,
+  .columns,
+  .facts {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar-inner,
+  .content {
+    width: min(100% - 20px, 1180px);
+  }
+
+  .form {
+    grid-template-columns: 1fr;
+  }
+
+  .form button {
+    height: 44px;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
