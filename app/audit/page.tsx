@@ -181,6 +181,17 @@ export default function AuditPage() {
                             <span className="tag">{plugin.status}</span>
                           </div>
                           <p className="muted">{plugin.note}</p>
+                          {plugin.assets.length ? (
+                            <div className="asset-evidence">
+                              {plugin.assets.map((asset) => (
+                                <div className="asset-row" key={asset.url}>
+                                  <span className="tag">{asset.fileType}</span>
+                                  <span className="asset-url">{asset.url}</span>
+                                  <span className="tag">ver: {asset.detectedVersion ?? "unknown"}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       ))
                     ) : (

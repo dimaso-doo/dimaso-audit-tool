@@ -1,6 +1,6 @@
 import semver from "semver";
 import * as cheerio from "cheerio";
-import type { WordpressAudit, WordpressPluginFinding } from "./types";
+import type { WordpressAudit, WordpressPluginAssetEvidence, WordpressPluginFinding } from "./types";
 
 const NOTE = "Based on public asset fingerprints. Exact update status requires WordPress admin access.";
 
@@ -22,6 +22,23 @@ function pluginVersionFromUrl(raw: string): string | undefined {
   }
 }
 
+function pluginAssetFromUrl(raw: string): { slug: string; asset: WordpressPluginAssetEvidence } | undefined {
+  const match = raw.match(/\/wp-content\/plugins\/([^/"'?\s]+)[^"'\s<)]*/i);
+  if (!match) return undefined;
+
+  const cleanUrl = match[0];
+  const lower = cleanUrl.toLowerCase();
+
+  return {
+    slug: match[1],
+    asset: {
+      url: cleanUrl,
+      fileType: lower.includes(".css") ? "css" : lower.includes(".js") ? "js" : "other",
+      detectedVersion: pluginVersionFromUrl(cleanUrl)
+    }
+  };
+}
+
 async function fetchWordPressPluginLatest(slug: string): Promise<string | undefined> {
   const endpoint = `https://api.wordpress.org/plugins/info/1.2/?action=plugin_information&request[slug]=${encodeURIComponent(slug)}`;
   const controller = new AbortController();
@@ -38,8 +55,13 @@ async function fetchWordPressPluginLatest(slug: string): Promise<string | undefi
   }
 }
 
-async function buildPluginFinding(slug: string, urls: string[]): Promise<WordpressPluginFinding> {
-  const detectedVersion = urls.map(pluginVersionFromUrl).find(Boolean);
+function chooseDetectedVersion(assets: WordpressPluginAssetEvidence[]) {
+  const versions = assets.map((asset) => asset.detectedVersion).filter((version): version is string => Boolean(version));
+  return versions.find((version) => Boolean(semver.valid(version))) ?? versions[0];
+}
+
+async function buildPluginFinding(slug: string, assets: WordpressPluginAssetEvidence[]): Promise<WordpressPluginFinding> {
+  const detectedVersion = chooseDetectedVersion(assets);
   const latestKnownVersion = await fetchWordPressPluginLatest(slug);
   let status: WordpressPluginFinding["status"] = "unknown";
 
@@ -53,8 +75,9 @@ async function buildPluginFinding(slug: string, urls: string[]): Promise<Wordpre
     detectedVersion,
     latestKnownVersion,
     status,
-    confidence: urls.length > 1 ? "high" : "medium",
+    confidence: assets.length > 1 ? "high" : "medium",
     source: "public_asset_fingerprint",
+    assets: assets.slice(0, 8),
     note: NOTE
   };
 }
@@ -63,7 +86,7 @@ export async function auditWordPress(html: string, assetUrls: string[]): Promise
   const $ = cheerio.load(html);
   const allText = [html, ...assetUrls].join("\n");
   const detectedTraces = new Set<string>();
-  const plugins = new Map<string, string[]>();
+  const plugins = new Map<string, WordpressPluginAssetEvidence[]>();
 
   if (allText.includes("/wp-content/")) detectedTraces.add("/wp-content/");
   if (allText.includes("/wp-includes/")) detectedTraces.add("/wp-includes/");
@@ -79,13 +102,26 @@ export async function auditWordPress(html: string, assetUrls: string[]): Promise
   const pluginRegex = /\/wp-content\/plugins\/([^/"'?\s]+)[^"'\s<)]*/gi;
   let match: RegExpExecArray | null;
   while ((match = pluginRegex.exec(allText))) {
-    const slug = match[1];
-    const found = plugins.get(slug) ?? [];
-    found.push(match[0]);
-    plugins.set(slug, found);
+    const found = pluginAssetFromUrl(match[0]);
+    if (!found) continue;
+    const current = plugins.get(found.slug) ?? [];
+    if (!current.some((asset) => asset.url === found.asset.url)) {
+      current.push(found.asset);
+    }
+    plugins.set(found.slug, current);
   }
 
-  const findings = await Promise.all([...plugins.entries()].slice(0, 20).map(([slug, urls]) => buildPluginFinding(slug, urls)));
+  for (const assetUrl of assetUrls) {
+    const found = pluginAssetFromUrl(assetUrl);
+    if (!found) continue;
+    const current = plugins.get(found.slug) ?? [];
+    if (!current.some((asset) => asset.url === found.asset.url)) {
+      current.push(found.asset);
+    }
+    plugins.set(found.slug, current);
+  }
+
+  const findings = await Promise.all([...plugins.entries()].slice(0, 30).map(([slug, assets]) => buildPluginFinding(slug, assets)));
 
   return {
     detectedTraces: [...detectedTraces],

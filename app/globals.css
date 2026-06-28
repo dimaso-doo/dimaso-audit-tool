@@ -311,6 +311,29 @@ h1 {
   padding: 12px;
 }
 
+.asset-evidence {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.asset-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.asset-url {
+  overflow-wrap: anywhere;
+  color: #334155;
+  font-size: 12px;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -323,7 +346,8 @@ h1 {
 @media (max-width: 920px) {
   .intro,
   .columns,
-  .facts {
+  .facts,
+  .asset-row {
     grid-template-columns: 1fr;
   }
 

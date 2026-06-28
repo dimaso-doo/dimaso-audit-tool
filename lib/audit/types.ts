@@ -50,7 +50,14 @@ export interface WordpressPluginFinding {
   status: "possibly_outdated" | "current" | "unknown";
   confidence: Confidence;
   source: "public_asset_fingerprint";
+  assets: WordpressPluginAssetEvidence[];
   note: string;
+}
+
+export interface WordpressPluginAssetEvidence {
+  url: string;
+  fileType: "css" | "js" | "other";
+  detectedVersion?: string;
 }
 
 export interface WordpressAudit {
