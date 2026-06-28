@@ -10,6 +10,7 @@ export default function AuditPage() {
   const [result, setResult] = useState<AuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,6 +31,32 @@ export default function AuditPage() {
       setError(err instanceof Error ? err.message : "Audit failed.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function downloadPdf() {
+    if (!result) return;
+    setPdfLoading(true);
+    setError(null);
+
+    try {
+      const form = document.createElement("form");
+      const input = document.createElement("input");
+      form.method = "POST";
+      form.action = "/api/audit/report-pdf";
+      form.target = "_blank";
+      form.style.display = "none";
+      input.type = "hidden";
+      input.name = "auditResult";
+      input.value = JSON.stringify(result);
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+      form.remove();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "PDF generation failed.");
+    } finally {
+      window.setTimeout(() => setPdfLoading(false), 800);
     }
   }
 
@@ -68,8 +95,8 @@ export default function AuditPage() {
                 <strong>Audit report</strong>
                 <span>Generate a client-ready PDF from the current audit result.</span>
               </div>
-              <button type="button" onClick={() => window.print()}>
-                Download PDF
+              <button type="button" onClick={downloadPdf} disabled={pdfLoading}>
+                {pdfLoading ? "Preparing..." : "Download PDF"}
               </button>
             </section>
 
@@ -95,7 +122,7 @@ export default function AuditPage() {
 
             <section className="section columns">
               <div className="panel">
-                <h2>Audit facts</h2>
+                <SectionTitle icon="F" title="Audit facts" subtitle="Public homepage signals" />
                 <div className="facts">
                   <Fact label="Final URL" value={result.universal.finalUrl} />
                   <Fact label="HTTP status" value={String(result.universal.statusCode)} />
@@ -116,7 +143,7 @@ export default function AuditPage() {
               </div>
 
               <div className="panel">
-                <h2>Summary</h2>
+                <SectionTitle icon="S" title="Summary" subtitle="Prioritized explanation" />
                 <p className="report-brand">by Dimaso</p>
                 <p className="pre">{result.summary}</p>
                 <div className="tag-row">
@@ -132,7 +159,7 @@ export default function AuditPage() {
             </section>
 
             <section className="section">
-              <h2>Issues</h2>
+              <SectionTitle icon="I" title="Issues" subtitle="Findings, confidence, and recommendations" />
               <div className="issues">
                 {result.issues.length ? (
                   result.issues.map((issue, index) => (
@@ -158,8 +185,8 @@ export default function AuditPage() {
 
             {result.wordpress ? (
               <section className="section">
-                <h2>WordPress public fingerprints</h2>
                 <div className="panel">
+                  <SectionTitle icon="WP" title="WordPress public fingerprints" subtitle="Plugin, theme, and asset traces visible without admin access" />
                   <p className="muted">{result.wordpress.note}</p>
                   <div className="tag-row">
                     {result.wordpress.detectedTraces.map((trace) => (
@@ -204,7 +231,7 @@ export default function AuditPage() {
 
             <section className="section columns">
               <div className="panel">
-                <h2>Security headers</h2>
+                <SectionTitle icon="H" title="Security headers" subtitle="HTTP response hardening checks" />
                 <div className="tag-row">
                   {result.securityHeaders.present.map((header) => (
                     <span className="tag" key={header}>
@@ -215,7 +242,7 @@ export default function AuditPage() {
                 <p className="muted">Missing: {result.securityHeaders.missing.join(", ") || "none"}</p>
               </div>
               <div className="panel">
-                <h2>PageSpeed</h2>
+                <SectionTitle icon="P" title="PageSpeed" subtitle="Google Lighthouse field and lab metrics" />
                 <Fact label="Status" value={result.pageSpeed.status} />
                 {result.pageSpeed.mobile ? <Fact label="Mobile performance" value={String(result.pageSpeed.mobile.performance ?? "n/a")} /> : null}
                 {result.pageSpeed.desktop ? <Fact label="Desktop performance" value={String(result.pageSpeed.desktop.performance ?? "n/a")} /> : null}
@@ -225,6 +252,18 @@ export default function AuditPage() {
         ) : null}
       </div>
     </main>
+  );
+}
+
+function SectionTitle({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
+  return (
+    <div className="section-title">
+      <span className="section-icon">{icon}</span>
+      <div>
+        <h2>{title}</h2>
+        <p>{subtitle}</p>
+      </div>
+    </div>
   );
 }
 
