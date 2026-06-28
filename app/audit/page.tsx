@@ -40,7 +40,7 @@ export default function AuditPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/audit/report-pdf", {
+      const response = await fetch("/api/audit/report-pdf/create", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(result)
@@ -50,18 +50,9 @@ export default function AuditPage() {
         throw new Error(data.error ?? "PDF generation failed.");
       }
 
-      const blob = new Blob([await response.arrayBuffer()], { type: "application/pdf" });
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      const host = new URL(result.universal.finalUrl).hostname.replace(/[^a-z0-9.-]/gi, "-");
-      link.href = href;
-      link.download = `dimaso-audit-${host}.pdf`;
-      link.rel = "noopener";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      window.setTimeout(() => URL.revokeObjectURL(href), 30000);
+      const data = (await response.json()) as { downloadUrl?: string };
+      if (!data.downloadUrl) throw new Error("PDF download URL was not created.");
+      window.location.assign(data.downloadUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF generation failed.");
     } finally {
