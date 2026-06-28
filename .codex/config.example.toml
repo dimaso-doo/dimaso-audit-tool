@@ -1,0 +1,7 @@
+[features]
+hooks = true
+
+[env]
+COGNEE_BASE_URL = "https://tenant-example.aws.cognee.ai"
+COGNEE_SERVICE_URL = "https://tenant-example.aws.cognee.ai"
+COGNEE_API_KEY = "replace-with-local-secret"

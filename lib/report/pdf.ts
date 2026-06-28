@@ -31,7 +31,17 @@ function pdfEscape(value: string) {
 }
 
 function wrapText(text: string, maxChars: number) {
-  const words = ascii(text).split(/\s+/).filter(Boolean);
+  const words = ascii(text)
+    .split(/\s+/)
+    .filter(Boolean)
+    .flatMap((word) => {
+      if (word.length <= maxChars) return [word];
+      const chunks: string[] = [];
+      for (let index = 0; index < word.length; index += maxChars) {
+        chunks.push(word.slice(index, index + maxChars));
+      }
+      return chunks;
+    });
   const lines: string[] = [];
   let current = "";
 
@@ -66,10 +76,10 @@ class PdfBuilder {
   }
 
   addSection(title: string) {
-    this.ensureSpace(54);
+    this.ensureSpace(70);
     this.current.push("0.941 0.965 0.961 rg 42 " + (this.y - 8) + " 528 30 re f");
     this.text(title, 52, this.y, 15, [23, 33, 43], true);
-    this.y -= 44;
+    this.y -= 48;
   }
 
   addLine(line: PdfLine) {
@@ -140,6 +150,7 @@ class PdfBuilder {
     this.text("by Dimaso", 500, 32, 9, [96, 112, 128], true);
     this.pages.push(this.current.join("\n"));
     this.current = [];
+    this.y = 750;
   }
 
   private text(text: string, x: number, y: number, size: number, color: [number, number, number], bold = false) {
@@ -168,23 +179,44 @@ export function createAuditPdf(result: AuditResult) {
   pdf.addKeyValue("Images missing alt", `${result.universal.imagesMissingAlt}/${result.universal.imagesTotal}`);
   pdf.addKeyValue("Links", `${result.universal.internalLinks} internal, ${result.universal.externalLinks} external`);
 
-  pdf.addSection("Summary");
+  pdf.addSection("Business Impact Summary");
   for (const line of result.summary.split(/\n+/).filter(Boolean).slice(0, 24)) {
     pdf.addLine({ text: line, size: 10 });
   }
 
-  pdf.addSection("Issues");
+  pdf.addSection("Conversion Blockers");
+  pdf.addKeyValue("CTA count", result.conversion.ctaCount);
+  pdf.addKeyValue("Contact options", result.conversion.contactOptions.join(", ") || "None detected");
+  pdf.addKeyValue("Offer clarity", result.conversion.offerClarity);
+  pdf.addKeyValue("Trust signals", result.conversion.trustSignals.join(", ") || "None detected");
+
+  pdf.addSection("SEO Growth Blockers");
+  pdf.addKeyValue("Title", result.universal.title ? "Present" : "Missing");
+  pdf.addKeyValue("Meta description", result.universal.metaDescription ? "Present" : "Missing");
+  pdf.addKeyValue("Canonical", result.universal.canonical ? "Present" : "Missing");
+  pdf.addKeyValue("Schema types", result.schema.detectedTypes.join(", ") || "None detected");
+
+  pdf.addSection("Tracking / Analytics Gaps");
+  if (result.tracking.detected.length) {
+    for (const tracker of result.tracking.detected) pdf.addLine({ text: `${tracker.name}: ${tracker.evidence.join(", ")}` });
+  } else {
+    pdf.addLine({ text: "No supported tracking tools detected." });
+  }
+  pdf.addKeyValue("Consent hints", result.tracking.consentHints.join(", ") || "None detected");
+
+  pdf.addSection("Findings");
   if (result.issues.length === 0) {
     pdf.addLine({ text: "No issues detected by the v0.1 public checks." });
   } else {
     for (const issue of result.issues.slice(0, 18)) {
       pdf.addLine({ text: `${issue.severity.toUpperCase()} - ${issue.title}`, size: 11, bold: true, color: [185, 28, 28] });
-      pdf.addLine({ text: `${issue.category}. ${issue.recommendation}`, size: 9, color: [51, 65, 85], gapAfter: 6 });
+      pdf.addLine({ text: `${issue.category}. ${issue.businessImpact}`, size: 9, color: [51, 65, 85] });
+      pdf.addLine({ text: `Recommendation: ${issue.recommendation}`, size: 9, color: [51, 65, 85], gapAfter: 6 });
     }
   }
 
   if (result.wordpress) {
-    pdf.addSection("WordPress public fingerprints");
+    pdf.addSection("WordPress Assumptions");
     pdf.addLine({ text: result.wordpress.note, color: [96, 112, 128] });
     if (result.wordpress.themeSlug) pdf.addKeyValue("Theme", result.wordpress.themeSlug);
     for (const plugin of result.wordpress.plugins.slice(0, 14)) {
@@ -200,11 +232,23 @@ export function createAuditPdf(result: AuditResult) {
     }
   }
 
-  pdf.addSection("Security and performance");
+  pdf.addSection("Security Observations");
   pdf.addKeyValue("Missing security headers", result.securityHeaders.missing.join(", ") || "none");
+  pdf.addSection("Performance Notes");
   pdf.addKeyValue("PageSpeed status", result.pageSpeed.status);
   if (result.pageSpeed.mobile) pdf.addKeyValue("Mobile performance", result.pageSpeed.mobile.performance ?? "n/a");
   if (result.pageSpeed.desktop) pdf.addKeyValue("Desktop performance", result.pageSpeed.desktop.performance ?? "n/a");
+
+  pdf.addSection("7-Day Action Plan");
+  result.actionPlan.sevenDay.slice(0, 8).forEach((item) => pdf.addLine({ text: item }));
+  pdf.addSection("30-Day Action Plan");
+  result.actionPlan.thirtyDay.slice(0, 10).forEach((item) => pdf.addLine({ text: item }));
+  pdf.addSection("Requires Access For Confirmation");
+  if (result.actionPlan.requiresAccess.length) {
+    result.actionPlan.requiresAccess.slice(0, 10).forEach((item) => pdf.addLine({ text: item }));
+  } else {
+    pdf.addLine({ text: "No access-gated confirmations were detected." });
+  }
 
   return pdf.finish();
 }

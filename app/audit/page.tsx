@@ -3,8 +3,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import type { AuditResult } from "@/lib/audit/types";
 
-const scoreLabels = ["Performance", "SEO", "Accessibility", "Security", "Technical health", "Platform risk"] as const;
-
 type PdfLinks = {
   downloadUrl: string;
   viewUrl: string;
@@ -153,10 +151,10 @@ export default function AuditPage() {
                 <span>Overall</span>
                 <strong>{result.scores.overall}</strong>
               </div>
-              {scoreLabels.map((label) => (
+              {Object.entries(result.scores.categories).map(([label, score]) => (
                 <div className="metric" key={label}>
                   <span>{label}</span>
-                  <strong>{result.scores.categories[label]}</strong>
+                  <strong>{score}</strong>
                 </div>
               ))}
             </section>
@@ -180,11 +178,14 @@ export default function AuditPage() {
                   <Fact label="Images missing alt" value={`${result.universal.imagesMissingAlt}/${result.universal.imagesTotal}`} />
                   <Fact label="CSS files" value={String(result.universal.cssFiles)} />
                   <Fact label="JS files" value={String(result.universal.jsFiles)} />
+                  <Fact label="Tracking tools" value={String(result.tracking.detected.length)} />
+                  <Fact label="Schema types" value={String(result.schema.detectedTypes.length)} />
+                  <Fact label="Forms" value={String(result.forms.forms.length)} />
                 </div>
               </div>
 
               <div className="panel">
-                <SectionTitle icon="S" title="Summary" subtitle="Prioritized explanation" />
+                <SectionTitle icon="B" title="Business Impact Summary" subtitle="Prioritized explanation" />
                 <p className="report-brand">by Dimaso</p>
                 <p className="pre">{result.summary}</p>
                 <div className="tag-row">
@@ -199,6 +200,47 @@ export default function AuditPage() {
               </div>
             </section>
 
+            <section className="section columns">
+              <div className="panel">
+                <SectionTitle icon="C" title="Conversion Blockers" subtitle="CTAs, forms, contact paths, and trust signals" />
+                <div className="facts">
+                  <Fact label="CTA count" value={String(result.conversion.ctaCount)} />
+                  <Fact label="Contact options" value={result.conversion.contactOptions.join(", ") || "None detected"} />
+                  <Fact label="Offer clarity" value={result.conversion.offerClarity} />
+                  <Fact label="Trust signals" value={result.conversion.trustSignals.join(", ") || "None detected"} />
+                  <Fact label="Weak buttons" value={String(result.conversion.weakButtons.length)} />
+                  <Fact label="Forms" value={String(result.conversion.formsCount)} />
+                </div>
+                <List items={result.conversion.ctaTexts} empty="No clear CTA text detected." />
+              </div>
+              <div className="panel">
+                <SectionTitle icon="SEO" title="SEO Growth Blockers" subtitle="Metadata, headings, sitemap, schema, and indexation basics" />
+                <div className="facts">
+                  <Fact label="Title" value={result.universal.title ? "Present" : "Missing"} />
+                  <Fact label="Meta description" value={result.universal.metaDescription ? "Present" : "Missing"} />
+                  <Fact label="Canonical" value={result.universal.canonical ? "Present" : "Missing"} />
+                  <Fact label="robots.txt" value={result.universal.robotsTxtExists ? "Found" : "Missing"} />
+                  <Fact label="sitemap.xml" value={result.universal.sitemapXmlExists ? "Found" : "Missing"} />
+                  <Fact label="Schema" value={result.schema.detectedTypes.join(", ") || "None detected"} />
+                </div>
+              </div>
+            </section>
+
+            <section className="section columns">
+              <div className="panel">
+                <SectionTitle icon="T" title="Tracking / Analytics Gaps" subtitle="Public analytics and consent hints" />
+                <List items={result.tracking.detected.map((tracker) => `${tracker.name}: ${tracker.evidence.join(", ")}`)} empty="No supported tracking tools detected." />
+                <p className="muted">Consent hints: {result.tracking.consentHints.join(", ") || "none detected"}</p>
+              </div>
+              <div className="panel">
+                <SectionTitle icon="P" title="Performance Notes" subtitle="Optional PageSpeed data" />
+                <Fact label="Status" value={result.pageSpeed.status} />
+                {result.pageSpeed.mobile ? <Fact label="Mobile performance" value={String(result.pageSpeed.mobile.performance ?? "n/a")} /> : null}
+                {result.pageSpeed.desktop ? <Fact label="Desktop performance" value={String(result.pageSpeed.desktop.performance ?? "n/a")} /> : null}
+                <p className="muted">{result.pageSpeed.message ?? "Scores are from Google PageSpeed when the API key is configured."}</p>
+              </div>
+            </section>
+
             <section className="section">
               <SectionTitle icon="I" title="Issues" subtitle="Findings, confidence, and recommendations" />
               <div className="issues">
@@ -210,6 +252,8 @@ export default function AuditPage() {
                         <span className="tag">{issue.severity}</span>
                       </div>
                       <p>{issue.recommendation}</p>
+                      <p className="muted"><strong>Business impact:</strong> {issue.businessImpact}</p>
+                      <List items={issue.evidence} empty="No evidence captured." />
                       <div className="tag-row">
                         <span className="tag">{issue.category}</span>
                         <span className="tag">{issue.confidence} confidence</span>
@@ -227,7 +271,7 @@ export default function AuditPage() {
             {result.wordpress ? (
               <section className="section">
                 <div className="panel">
-                  <SectionTitle icon="WP" title="WordPress public fingerprints" subtitle="Plugin, theme, and asset traces visible without admin access" />
+                  <SectionTitle icon="WP" title="WordPress Assumptions" subtitle="Plugin, theme, and asset traces visible without admin access" />
                   <p className="muted">{result.wordpress.note}</p>
                   <div className="tag-row">
                     {result.wordpress.detectedTraces.map((trace) => (
@@ -272,7 +316,7 @@ export default function AuditPage() {
 
             <section className="section columns">
               <div className="panel">
-                <SectionTitle icon="H" title="Security headers" subtitle="HTTP response hardening checks" />
+                <SectionTitle icon="H" title="Security Observations" subtitle="HTTP response hardening checks" />
                 <div className="tag-row">
                   {result.securityHeaders.present.map((header) => (
                     <span className="tag" key={header}>
@@ -283,10 +327,27 @@ export default function AuditPage() {
                 <p className="muted">Missing: {result.securityHeaders.missing.join(", ") || "none"}</p>
               </div>
               <div className="panel">
-                <SectionTitle icon="P" title="PageSpeed" subtitle="Google Lighthouse field and lab metrics" />
-                <Fact label="Status" value={result.pageSpeed.status} />
-                {result.pageSpeed.mobile ? <Fact label="Mobile performance" value={String(result.pageSpeed.mobile.performance ?? "n/a")} /> : null}
-                {result.pageSpeed.desktop ? <Fact label="Desktop performance" value={String(result.pageSpeed.desktop.performance ?? "n/a")} /> : null}
+                <SectionTitle icon="PL" title="Platform-Specific Notes" subtitle="What can and cannot be confirmed externally" />
+                <p>{result.platformNote ?? "WordPress public fingerprinting is based on visible traces only."}</p>
+                <p className="muted">Detected platform: {result.platform.platform} ({result.platform.confidence})</p>
+              </div>
+            </section>
+
+            <section className="section columns">
+              <div className="panel">
+                <SectionTitle icon="7" title="7-Day Action Plan" subtitle="Fastest visible fixes" />
+                <List items={result.actionPlan.sevenDay} empty="No urgent public actions detected." />
+              </div>
+              <div className="panel">
+                <SectionTitle icon="30" title="30-Day Action Plan" subtitle="Follow-up improvements" />
+                <List items={result.actionPlan.thirtyDay} empty="No follow-up actions detected." />
+              </div>
+            </section>
+
+            <section className="section">
+              <div className="panel">
+                <SectionTitle icon="A" title="Requires Access For Confirmation" subtitle="Items that need admin, analytics, CMS, or server access" />
+                <List items={result.actionPlan.requiresAccess} empty="No access-gated confirmations were detected." />
               </div>
             </section>
           </>
@@ -314,5 +375,17 @@ function Fact({ label, value }: { label: string; value: string }) {
       <div className="label">{label}</div>
       <div>{value}</div>
     </div>
+  );
+}
+
+function List({ items, empty }: { items: string[]; empty: string }) {
+  return items.length ? (
+    <ul className="report-list">
+      {items.slice(0, 12).map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  ) : (
+    <p className="muted">{empty}</p>
   );
 }

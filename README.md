@@ -27,10 +27,16 @@ Open `http://localhost:3000/audit`.
 - Security header checks.
 - Platform detection with public fingerprints.
 - WordPress public fingerprint module when WordPress is likely.
+- Tracking, schema, conversion, and static form audits.
 - Optional PageSpeed Insights integration.
 - Optional AI summary constrained to structured audit facts.
 - Deterministic scoring.
+- Browser-generated PDF report links after an audit result is available.
 
 ## What v0.1 intentionally excludes
 
-Database, auth, dashboard, PDF export, CRM, payment, and any admin-only CMS checks.
+Database, auth, dashboard, CRM, payment, and any admin-only CMS checks.
+
+## Reports
+
+Run an audit, then click `Generate PDF`. The app creates visible `Open PDF` and `Download PDF` links for the current browser session.

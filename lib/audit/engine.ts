@@ -1,9 +1,12 @@
 import * as cheerio from "cheerio";
+import { auditConversion, auditForms } from "./conversion";
 import { detectPlatform, platformNote } from "./platform";
 import { getPageSpeedScores } from "./pagespeed";
+import { auditSchema } from "./schema";
 import { scoreAudit } from "./scoring";
 import { summarizeAudit } from "./summary";
-import type { AuditIssue, AuditResult, SecurityHeadersAudit } from "./types";
+import type { ActionPlan, AuditIssue, AuditResult, ConversionAudit, SchemaAudit, SecurityHeadersAudit, StaticFormAudit, TrackingAudit } from "./types";
+import { auditTracking } from "./tracking";
 import { auditWordPress } from "./wordpress";
 import { normalizeInputUrl, safeFetch } from "./urlSafety";
 
@@ -57,7 +60,7 @@ async function checkBrokenLinks(urls: string[]) {
   return (await Promise.all(checks)).filter((item): item is BrokenLink => Boolean(item));
 }
 
-function securityHeaders(headers: Headers): SecurityHeadersAudit {
+export function securityHeaders(headers: Headers): SecurityHeadersAudit {
   const present = SECURITY_HEADERS.filter((header) => Boolean(headers.get(header)));
   const missing = SECURITY_HEADERS.filter((header) => !headers.get(header));
   return { present, missing };
@@ -78,9 +81,20 @@ function buildIssues(input: {
   security: SecurityHeadersAudit;
   platform: string;
   wordpressPlugins?: Array<{ status: string; slug: string }>;
+  tracking: TrackingAudit;
+  schema: SchemaAudit;
+  conversion: ConversionAudit;
+  forms: StaticFormAudit;
 }): AuditIssue[] {
   const issues: AuditIssue[] = [];
-  const add = (issue: AuditIssue) => issues.push(issue);
+  const add = (issue: Omit<AuditIssue, "evidence" | "businessImpact"> & Partial<Pick<AuditIssue, "evidence" | "businessImpact">>) =>
+    issues.push({
+      ...issue,
+      evidence: issue.evidence ?? [issue.title],
+      businessImpact:
+        issue.businessImpact ??
+        "This can reduce trust, discoverability, conversion rate, or measurement quality until it is reviewed."
+    });
 
   if (!input.finalUrl.startsWith("https://")) {
     add({
@@ -89,6 +103,8 @@ function buildIssues(input: {
       severity: "high",
       confidence: "high",
       source: "crawler",
+      evidence: [input.finalUrl],
+      businessImpact: "Visitors may see browser warnings or lose trust before converting.",
       recommendation: "Redirect all public traffic to HTTPS and keep certificates valid.",
       requiresAccess: false
     });
@@ -100,6 +116,8 @@ function buildIssues(input: {
       severity: "high",
       confidence: "high",
       source: "crawler",
+      evidence: [`HTTP ${input.statusCode}`],
+      businessImpact: "Search engines and visitors may treat the homepage as unavailable.",
       recommendation: "Fix the homepage response so visitors and crawlers receive a successful status.",
       requiresAccess: false
     });
@@ -111,6 +129,8 @@ function buildIssues(input: {
       severity: "medium",
       confidence: "high",
       source: "html",
+      evidence: ["No <title> value found on the fetched homepage."],
+      businessImpact: "Search snippets and browser tabs become less clear, which can reduce organic CTR.",
       recommendation: "Add a unique descriptive title tag to the homepage.",
       requiresAccess: false
     });
@@ -122,6 +142,8 @@ function buildIssues(input: {
       severity: "low",
       confidence: "high",
       source: "html",
+      evidence: ["No meta description tag found on the fetched homepage."],
+      businessImpact: "Search result snippets may be auto-generated and less persuasive.",
       recommendation: "Add a concise meta description for search snippets and sharing context.",
       requiresAccess: false
     });
@@ -133,6 +155,8 @@ function buildIssues(input: {
       severity: "medium",
       confidence: "high",
       source: "html",
+      evidence: [`H1 count: ${input.h1Count}`],
+      businessImpact: "Unclear page hierarchy can weaken topical relevance and accessibility.",
       recommendation: "Use one clear H1 that describes the page topic.",
       requiresAccess: false
     });
@@ -144,6 +168,8 @@ function buildIssues(input: {
       severity: "low",
       confidence: "high",
       source: "html",
+      evidence: ["No canonical link tag found."],
+      businessImpact: "Duplicate URL variants can dilute SEO signals.",
       recommendation: "Add a canonical link to reduce duplicate URL ambiguity.",
       requiresAccess: false
     });
@@ -155,6 +181,8 @@ function buildIssues(input: {
       severity: "low",
       confidence: "medium",
       source: "crawler",
+      evidence: ["/robots.txt did not return a successful response."],
+      businessImpact: "Crawler directives and sitemap discovery may be harder to manage.",
       recommendation: "Publish a robots.txt file with intended crawler directives.",
       requiresAccess: false
     });
@@ -166,6 +194,8 @@ function buildIssues(input: {
       severity: "low",
       confidence: "medium",
       source: "crawler",
+      evidence: ["/sitemap.xml did not return a successful response."],
+      businessImpact: "Important URLs may be discovered slower by search engines.",
       recommendation: "Publish an XML sitemap and reference it from robots.txt.",
       requiresAccess: false
     });
@@ -177,6 +207,8 @@ function buildIssues(input: {
       severity: "medium",
       confidence: "high",
       source: "html",
+      evidence: [`${input.imagesMissingAlt}/${input.imagesTotal} images missing alt attributes.`],
+      businessImpact: "Users relying on assistive technology may miss important content.",
       recommendation: "Add meaningful alt text for informative images and empty alt text for decorative images.",
       requiresAccess: false
     });
@@ -188,6 +220,8 @@ function buildIssues(input: {
       severity: "medium",
       confidence: "medium",
       source: "crawler",
+      evidence: input.brokenLinks.slice(0, 5).map((link) => link.url),
+      businessImpact: "Broken links create dead ends for visitors and can waste crawl budget.",
       recommendation: "Review the reported homepage links and update or remove failing destinations.",
       requiresAccess: false
     });
@@ -199,6 +233,8 @@ function buildIssues(input: {
       severity: header === "content-security-policy" ? "medium" : "low",
       confidence: "high",
       source: "headers",
+      evidence: [`Missing response header: ${header}`],
+      businessImpact: "Missing browser security controls can increase exposure to common client-side risks.",
       recommendation: `Add and test the ${header} response header for the public site.`,
       requiresAccess: false
     });
@@ -211,13 +247,108 @@ function buildIssues(input: {
         severity: "medium",
         confidence: "medium",
         source: "wordpress_fingerprint",
+        evidence: [`Public plugin asset trace: ${plugin.slug}`],
+        businessImpact: "Public version traces can help prioritize admin-side plugin review.",
         recommendation: "Review this plugin in WordPress admin. Possibly outdated based on public fingerprint only.",
         requiresAccess: true
       });
     }
   }
+  if (!input.tracking.detected.some((tracker) => tracker.name === "Google Analytics" || tracker.name === "Google Tag Manager")) {
+    add({
+      title: "No GA or GTM tracking detected",
+      category: "Tracking",
+      severity: "medium",
+      confidence: "medium",
+      source: "tracking_detection",
+      evidence: ["No public GA/GTM script markers detected on the homepage."],
+      businessImpact: "Marketing performance and conversion attribution may be incomplete.",
+      recommendation: "Confirm analytics coverage and install GA4 or GTM where appropriate.",
+      requiresAccess: true
+    });
+  }
+  if (input.tracking.detected.length > 0 && input.tracking.consentHints.length === 0) {
+    add({
+      title: "Tracking detected without obvious consent hints",
+      category: "Tracking",
+      severity: "low",
+      confidence: "low",
+      source: "tracking_detection",
+      evidence: input.tracking.detected.map((tracker) => tracker.name),
+      businessImpact: "Consent implementation may need legal and analytics review.",
+      recommendation: "Confirm cookie consent behavior and regional compliance rules.",
+      requiresAccess: true
+    });
+  }
+  if (input.schema.jsonLdCount === 0 && input.schema.microdataCount === 0) {
+    add({
+      title: "No structured schema detected",
+      category: "Schema",
+      severity: "low",
+      confidence: "high",
+      source: "schema_detection",
+      evidence: ["No JSON-LD or microdata found on the homepage."],
+      businessImpact: "The site may miss enhanced search result eligibility.",
+      recommendation: "Add relevant Organization, BreadcrumbList, Article, Product, FAQPage, or LocalBusiness schema.",
+      requiresAccess: false
+    });
+  }
+  if (input.conversion.ctaCount === 0) {
+    add({
+      title: "No clear homepage CTA detected",
+      category: "Conversion",
+      severity: "high",
+      confidence: "medium",
+      source: "conversion_audit",
+      evidence: ["No common CTA text found in links or buttons."],
+      businessImpact: "Visitors may not know the next step, reducing lead generation.",
+      recommendation: "Add a clear primary CTA above the fold and repeat it near key sections.",
+      requiresAccess: false
+    });
+  }
+  if (input.conversion.contactOptions.length === 0) {
+    add({
+      title: "No obvious contact option detected",
+      category: "Conversion",
+      severity: "medium",
+      confidence: "medium",
+      source: "conversion_audit",
+      evidence: ["No mailto, tel, contact copy, or form detected on homepage."],
+      businessImpact: "Qualified visitors may abandon if they cannot easily contact the business.",
+      recommendation: "Expose phone, email, contact page, or lead form paths clearly.",
+      requiresAccess: false
+    });
+  }
+  for (const form of input.forms.forms) {
+    if (!form.hasSubmitButton || form.labels < form.fieldCount) {
+      add({
+        title: `Form ${form.index + 1} may need accessibility review`,
+        category: "Conversion",
+        severity: "low",
+        confidence: "medium",
+        source: "form_audit",
+        evidence: [`Fields: ${form.fieldCount}`, `Labels: ${form.labels}`, `Submit button: ${form.hasSubmitButton}`],
+        businessImpact: "Poor form usability can reduce submissions and lead quality.",
+        recommendation: "Ensure each visible field has a label and each form has a clear submit button.",
+        requiresAccess: false
+      });
+    }
+  }
 
   return issues;
+}
+
+function actionPlan(issues: AuditIssue[]): ActionPlan {
+  const priority = issues.filter((issue) => ["critical", "high", "medium"].includes(issue.severity));
+  const sevenDay = priority.slice(0, 6).map((issue) => issue.recommendation);
+  const thirtyDay = issues.slice(0, 10).map((issue) => `Resolve: ${issue.title}`);
+  const requiresAccess = issues.filter((issue) => issue.requiresAccess).map((issue) => issue.title);
+
+  return {
+    sevenDay: sevenDay.length ? sevenDay : ["Review the report and confirm the highest-value business goal for the next audit iteration."],
+    thirtyDay: thirtyDay.length ? thirtyDay : ["Schedule a follow-up audit after content, tracking, and technical changes are deployed."],
+    requiresAccess
+  };
 }
 
 export async function runAudit(rawUrl: string): Promise<AuditResult> {
@@ -264,6 +395,10 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
   const headingStructure = Object.fromEntries(["h1", "h2", "h3", "h4", "h5", "h6"].map((level) => [level, $(level).length]));
   const security = securityHeaders(response.headers);
   const platform = detectPlatform(html, assetUrls);
+  const tracking = auditTracking(html);
+  const schema = auditSchema(html);
+  const forms = auditForms(html, finalUrl);
+  const conversion = auditConversion(html, finalUrl, forms);
   const wordpress = platform.platform === "WordPress" || platform.evidence.some((item) => item.toLowerCase().includes("wp-"))
     ? await auditWordPress(html, assetUrls)
     : undefined;
@@ -306,9 +441,14 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     brokenLinks,
     security,
     platform: platform.platform,
-    wordpressPlugins: wordpress?.plugins
+    wordpressPlugins: wordpress?.plugins,
+    tracking,
+    schema,
+    conversion,
+    forms
   });
   const scores = scoreAudit(issues, pageSpeed);
+  const plan = actionPlan(issues);
   const withoutSummary = {
     auditedAt: new Date().toISOString(),
     universal,
@@ -316,9 +456,14 @@ export async function runAudit(rawUrl: string): Promise<AuditResult> {
     platform,
     wordpress,
     platformNote: platformNote(platform.platform),
+    tracking,
+    schema,
+    conversion,
+    forms,
     pageSpeed,
     scores,
-    issues
+    issues,
+    actionPlan: plan
   };
 
   return {

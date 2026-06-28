@@ -6,7 +6,10 @@ export type IssueCategory =
   | "Accessibility"
   | "Security"
   | "Technical health"
-  | "Platform risk";
+  | "Platform risk"
+  | "Tracking"
+  | "Schema"
+  | "Conversion";
 
 export interface AuditIssue {
   title: string;
@@ -19,7 +22,13 @@ export interface AuditIssue {
     | "pagespeed"
     | "crawler"
     | "wordpress_fingerprint"
-    | "platform_detection";
+    | "platform_detection"
+    | "tracking_detection"
+    | "schema_detection"
+    | "conversion_audit"
+    | "form_audit";
+  evidence: string[];
+  businessImpact: string;
   recommendation: string;
   requiresAccess: boolean;
 }
@@ -115,6 +124,52 @@ export interface SecurityHeadersAudit {
   missing: string[];
 }
 
+export interface TrackingAudit {
+  detected: Array<{
+    name: "Google Analytics" | "Google Tag Manager" | "Meta Pixel" | "LinkedIn Insight" | "TikTok Pixel" | "Microsoft Clarity" | "Hotjar";
+    evidence: string[];
+  }>;
+  missing: string[];
+  consentHints: string[];
+}
+
+export interface SchemaAudit {
+  jsonLdCount: number;
+  microdataCount: number;
+  detectedTypes: string[];
+  targetTypes: Record<"Organization" | "LocalBusiness" | "Product" | "Article" | "FAQPage" | "BreadcrumbList", boolean>;
+}
+
+export interface ConversionAudit {
+  ctaCount: number;
+  ctaTexts: string[];
+  contactOptions: string[];
+  formsCount: number;
+  trustSignals: string[];
+  offerClarity: "strong" | "moderate" | "weak";
+  weakButtons: string[];
+}
+
+export interface StaticFormAudit {
+  forms: Array<{
+    index: number;
+    fieldCount: number;
+    fields: string[];
+    labels: number;
+    requiredFields: number;
+    hasSubmitButton: boolean;
+    method?: string;
+    action?: string;
+    spamProtectionHints: string[];
+  }>;
+}
+
+export interface ActionPlan {
+  sevenDay: string[];
+  thirtyDay: string[];
+  requiresAccess: string[];
+}
+
 export interface ScoreBreakdown {
   overall: number;
   categories: Record<IssueCategory, number>;
@@ -127,8 +182,13 @@ export interface AuditResult {
   platform: PlatformDetection;
   wordpress?: WordpressAudit;
   platformNote?: string;
+  tracking: TrackingAudit;
+  schema: SchemaAudit;
+  conversion: ConversionAudit;
+  forms: StaticFormAudit;
   pageSpeed: PageSpeedScores;
   scores: ScoreBreakdown;
   issues: AuditIssue[];
+  actionPlan: ActionPlan;
   summary: string;
 }

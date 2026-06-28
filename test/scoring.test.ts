@@ -11,6 +11,8 @@ describe("deterministic scoring", () => {
         severity: "medium",
         confidence: "high",
         source: "headers",
+        evidence: ["missing content-security-policy"],
+        businessImpact: "Browser hardening is weaker.",
         recommendation: "Add CSP.",
         requiresAccess: false
       },
@@ -20,6 +22,8 @@ describe("deterministic scoring", () => {
         severity: "medium",
         confidence: "high",
         source: "html",
+        evidence: ["missing title"],
+        businessImpact: "Search snippets are weaker.",
         recommendation: "Add title.",
         requiresAccess: false
       }
@@ -28,6 +32,6 @@ describe("deterministic scoring", () => {
     const scores = scoreAudit(issues, { status: "skipped" });
     expect(scores.categories.Security).toBe(90);
     expect(scores.categories.SEO).toBe(90);
-    expect(scores.overall).toBe(97);
+    expect(scores.overall).toBe(98);
   });
 });

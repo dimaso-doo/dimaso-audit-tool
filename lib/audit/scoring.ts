@@ -6,7 +6,10 @@ const categories: IssueCategory[] = [
   "Accessibility",
   "Security",
   "Technical health",
-  "Platform risk"
+  "Platform risk",
+  "Tracking",
+  "Schema",
+  "Conversion"
 ];
 
 const penalty = {

@@ -1,0 +1,12 @@
+services:
+  cognee:
+    image: topoteretes/cognee:latest
+    ports:
+      - "8000:8000"
+    environment:
+      COGNEE_API_KEY: ${COGNEE_API_KEY:-local-dev-key}
+    volumes:
+      - cognee-data:/data
+
+volumes:
+  cognee-data:
