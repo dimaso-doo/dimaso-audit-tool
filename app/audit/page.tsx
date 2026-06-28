@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import type { AuditResult } from "@/lib/audit/types";
 
 const scoreLabels = ["Performance", "SEO", "Accessibility", "Security", "Technical health", "Platform risk"] as const;
@@ -9,6 +9,7 @@ type PdfLinks = {
   downloadUrl: string;
   viewUrl: string;
   filename: string;
+  objectUrl: string;
 };
 
 export default function AuditPage() {
@@ -19,12 +20,25 @@ export default function AuditPage() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfLinks, setPdfLinks] = useState<PdfLinks | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (pdfLinks?.objectUrl) URL.revokeObjectURL(pdfLinks.objectUrl);
+    };
+  }, [pdfLinks]);
+
+  function clearPdfLinks() {
+    setPdfLinks((current) => {
+      if (current?.objectUrl) URL.revokeObjectURL(current.objectUrl);
+      return null;
+    });
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
     setResult(null);
-    setPdfLinks(null);
+    clearPdfLinks();
 
     try {
       const response = await fetch("/api/audit", {
@@ -46,10 +60,10 @@ export default function AuditPage() {
     if (!result) return;
     setPdfLoading(true);
     setError(null);
-    setPdfLinks(null);
+    clearPdfLinks();
 
     try {
-      const response = await fetch("/api/audit/report-pdf/create", {
+      const response = await fetch("/api/audit/report-pdf", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(result)
@@ -59,14 +73,15 @@ export default function AuditPage() {
         throw new Error(data.error ?? "PDF generation failed.");
       }
 
-      const data = (await response.json()) as Partial<PdfLinks>;
-      if (!data.downloadUrl || !data.viewUrl || !data.filename) {
-        throw new Error("PDF links were not created.");
-      }
+      const host = new URL(result.universal.finalUrl).hostname.replace(/[^a-z0-9.-]/gi, "-");
+      const filename = `dimaso-audit-${host}.pdf`;
+      const blob = new Blob([await response.arrayBuffer()], { type: "application/pdf" });
+      const objectUrl = URL.createObjectURL(blob);
       setPdfLinks({
-        downloadUrl: data.downloadUrl,
-        viewUrl: data.viewUrl,
-        filename: data.filename
+        downloadUrl: objectUrl,
+        viewUrl: objectUrl,
+        filename,
+        objectUrl
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF generation failed.");
