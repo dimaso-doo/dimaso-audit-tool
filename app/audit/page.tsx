@@ -40,23 +40,32 @@ export default function AuditPage() {
     setError(null);
 
     try {
-      const form = document.createElement("form");
-      const input = document.createElement("input");
-      form.method = "POST";
-      form.action = "/api/audit/report-pdf";
-      form.target = "_blank";
-      form.style.display = "none";
-      input.type = "hidden";
-      input.name = "auditResult";
-      input.value = JSON.stringify(result);
-      form.appendChild(input);
-      document.body.appendChild(form);
-      form.submit();
-      form.remove();
+      const response = await fetch("/api/audit/report-pdf", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(result)
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error ?? "PDF generation failed.");
+      }
+
+      const blob = new Blob([await response.arrayBuffer()], { type: "application/pdf" });
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const host = new URL(result.universal.finalUrl).hostname.replace(/[^a-z0-9.-]/gi, "-");
+      link.href = href;
+      link.download = `dimaso-audit-${host}.pdf`;
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.setTimeout(() => URL.revokeObjectURL(href), 30000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF generation failed.");
     } finally {
-      window.setTimeout(() => setPdfLoading(false), 800);
+      setPdfLoading(false);
     }
   }
 

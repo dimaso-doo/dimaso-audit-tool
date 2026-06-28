@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAuditPdf } from "@/lib/report/pdf";
 import type { AuditResult } from "@/lib/audit/types";
 
+export function GET(request: NextRequest) {
+  return NextResponse.redirect(new URL("/audit", request.url));
+}
+
 function filenameFromUrl(value: string) {
   try {
     return new URL(value).hostname.replace(/[^a-z0-9.-]/gi, "-");
