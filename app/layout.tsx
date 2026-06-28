@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Dimaso Audit Tool",
-  description: "External public website audit MVP"
+  title: "Dimaso Diagnosis Engine",
+  description: "Website diagnosis and rebuild scope MVP for Dimaso"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

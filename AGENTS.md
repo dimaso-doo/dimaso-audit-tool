@@ -1,6 +1,6 @@
-# Dimaso Audit Tool Agent Instructions
+# Dimaso Diagnosis Engine Agent Instructions
 
-This repository is the first MVP of Dimaso's external website audit tool.
+This repository is the first MVP of Dimaso's website diagnosis and rebuild scope engine.
 
 ## Project rules
 
@@ -8,8 +8,10 @@ This repository is the first MVP of Dimaso's external website audit tool.
 - The app must run from a fresh clone with `npm install`, `.env.local` copied from `.env.example`, and `npm run dev`.
 - Do not commit real secrets. Add new required variables to `.env.example`.
 - Treat GitHub as the source of truth. Keep docs and setup steps reproducible.
-- The audit must work from public website access only. Never claim private CMS/admin facts without verified access.
+- The diagnosis must work from public website access only. Never claim private CMS/admin, hosting, CRM, analytics, or revenue facts without verified access.
 - Every finding must include evidence, business impact, recommendation, confidence, source, and whether access is required.
+- The diagnosis output must distinguish client-facing report content from internal Dimaso sales/scoping notes.
+- Rebuild, optimization, maintenance, and platform-build recommendations must be deterministic and evidence-based.
 
 ## Security expectations
 

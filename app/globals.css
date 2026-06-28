@@ -26,7 +26,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -136,6 +137,49 @@ h1 {
 }
 
 .form button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.diagnose-intro {
+  grid-template-columns: minmax(0, 1fr) 420px;
+}
+
+.diagnosis-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.diagnosis-form input,
+.diagnosis-form select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  outline: 0;
+  padding: 12px 10px;
+  color: var(--ink);
+  background: #fff;
+}
+
+.diagnosis-form button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 18px;
+  color: #fff;
+  background: var(--teal);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.diagnosis-form button:disabled {
   cursor: wait;
   opacity: 0.68;
 }
@@ -265,6 +309,12 @@ h1 {
   margin-top: 7px;
   font-size: 30px;
   line-height: 1;
+}
+
+.word-score {
+  font-size: 20px !important;
+  line-height: 1.1 !important;
+  text-transform: capitalize;
 }
 
 .metric span,
@@ -436,8 +486,46 @@ h1 {
   line-height: 1.5;
 }
 
+.report-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.45;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  background: #f8fafc;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+td {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 920px) {
   .intro,
+  .diagnose-intro,
   .columns,
   .facts,
   .asset-row {

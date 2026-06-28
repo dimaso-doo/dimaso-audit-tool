@@ -7,7 +7,7 @@ GitHub is the source of truth for this project.
 ```bash
 git clone git@github.com:dimaso-doo/dimaso-audit-tool.git
 cd dimaso-audit-tool
-git switch feature/audit-mvp
+git switch feature/diagnosis-engine-mvp
 npm install
 cp .env.example .env.local
 npm run dev
@@ -17,7 +17,7 @@ npm run dev
 
 ```bash
 git fetch origin
-git switch feature/audit-mvp
+git switch feature/diagnosis-engine-mvp
 git pull --ff-only
 ```
 

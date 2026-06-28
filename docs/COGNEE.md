@@ -1,8 +1,8 @@
 # Cognee
 
-Cognee is optional for v0.1. The audit tool runs without Cognee.
+Cognee is optional for v0.1. The diagnosis engine and audit tool run without Cognee.
 
-Use Cognee for project memory, audit playbooks, decisions, and historical audit context. Do not upload live API keys or private client secrets.
+Use Cognee for project memory, diagnosis playbooks, audit rules, decisions, and historical scoping context. Do not upload live API keys or private client secrets.
 
 ## Local env
 
@@ -22,4 +22,4 @@ codex plugin add cognee@cognee
 
 ## Local Docker helper
 
-`docker-compose.cognee.yml` is provided as a starting point for local Cognee experiments. It is not required for the audit app.
+`docker-compose.cognee.yml` is provided as a starting point for local Cognee experiments. It is not required for the diagnosis app.

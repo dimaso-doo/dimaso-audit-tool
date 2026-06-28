@@ -1,7 +1,7 @@
 {
-  "name": "dimaso-audit-tool",
+  "name": "dimaso-diagnosis-engine",
   "version": "0.1.0",
-  "description": "External website audit MVP for Dimaso.",
+  "description": "Website diagnosis and rebuild scope engine MVP for Dimaso.",
   "private": true,
   "scripts": {
     "dev": "next dev",

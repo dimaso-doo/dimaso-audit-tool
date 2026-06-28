@@ -1,18 +1,18 @@
-# dimaso-audit-tool
+# dimaso-diagnosis-engine
 
-External website audit MVP for Dimaso. It audits public URLs without admin access.
+Website diagnosis and rebuild scope MVP for Dimaso. It diagnoses public websites, produces a client-facing report, and gives Dimaso an internal scope brief without requiring admin access.
 
 ## Run locally
 
 ```bash
 git clone <repo-url>
-cd dimaso-audit-tool
+cd dimaso-diagnosis-engine
 npm install
 cp .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000/audit`.
+Open `http://localhost:3000/diagnose`. The lower-level technical audit remains available at `http://localhost:3000/audit`.
 
 ## Environment variables
 
@@ -23,6 +23,11 @@ Open `http://localhost:3000/audit`.
 
 ## What v0.1 includes
 
+- Website diagnosis and rebuild/optimization recommendation.
+- Organization and goal-aware feature gap analysis.
+- Public crawl and content inventory.
+- Information architecture, workflow, migration risk, and scope estimate.
+- Client report plus internal Dimaso brief.
 - Universal public website checks.
 - Security header checks.
 - Platform detection with public fingerprints.
@@ -40,3 +45,17 @@ Database, auth, dashboard, CRM, payment, and any admin-only CMS checks.
 ## Reports
 
 Run an audit, then click `Generate PDF`. The app creates visible `Open PDF` and `Download PDF` links for the current browser session.
+
+## Diagnosis API
+
+`POST /api/diagnose`
+
+```json
+{
+  "url": "https://example.com",
+  "organizationType": "service_business",
+  "primaryGoal": "leads"
+}
+```
+
+The response includes deterministic scores, rebuild recommendation, content inventory, feature gaps, roadmap, client report, and internal Dimaso brief.
