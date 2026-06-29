@@ -42,6 +42,24 @@ describe("WordPress public fingerprints", () => {
     });
   });
 
+  it("handles shortened public versions like 1.10 without throwing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ version: "1.11" }), { status: 200 });
+      })
+    );
+
+    const audit = await auditWordPress("", ["https://example.com/wp-content/plugins/sample-plugin/assets/main.css?ver=1.10"]);
+
+    expect(audit.plugins[0]).toMatchObject({
+      slug: "sample-plugin",
+      detectedVersion: "1.10",
+      latestKnownVersion: "1.11",
+      status: "possibly_outdated"
+    });
+  });
+
   it("ignores wildcard plugin paths that are not real slugs", async () => {
     const audit = await auditWordPress("", ["/wp-content/plugins/*"]);
     expect(audit.plugins).toHaveLength(0);

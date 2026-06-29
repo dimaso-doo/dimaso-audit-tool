@@ -16,10 +16,15 @@ function pluginVersionFromUrl(raw: string): string | undefined {
   try {
     const url = new URL(raw, "https://example.com");
     const version = url.searchParams.get("ver") ?? undefined;
-    return version && semver.valid(version) ? version : version;
+    return version?.trim() || undefined;
   } catch {
     return undefined;
   }
+}
+
+function comparableVersion(version?: string) {
+  if (!version) return undefined;
+  return semver.valid(version) ?? semver.coerce(version)?.version;
 }
 
 function pluginAssetFromUrl(raw: string): { slug: string; asset: WordpressPluginAssetEvidence } | undefined {
@@ -58,13 +63,16 @@ async function fetchWordPressPluginLatest(slug: string): Promise<string | undefi
 
 function chooseDetectedVersion(assets: WordpressPluginAssetEvidence[], latestKnownVersion?: string) {
   const versions = assets.map((asset) => asset.detectedVersion).filter((version): version is string => Boolean(version));
-  const validVersions = versions.filter((version) => Boolean(semver.valid(version)));
+  const comparableLatest = comparableVersion(latestKnownVersion);
+  const comparableVersions = versions
+    .map((raw) => ({ raw, comparable: comparableVersion(raw) }))
+    .filter((version): version is { raw: string; comparable: string } => Boolean(version.comparable));
 
-  if (latestKnownVersion && validVersions.some((version) => semver.eq(version, latestKnownVersion))) {
+  if (latestKnownVersion && comparableLatest && comparableVersions.some((version) => semver.eq(version.comparable, comparableLatest))) {
     return latestKnownVersion;
   }
 
-  return validVersions.sort(semver.rcompare)[0] ?? versions[0];
+  return comparableVersions.sort((a, b) => semver.rcompare(a.comparable, b.comparable))[0]?.raw ?? versions[0];
 }
 
 async function buildPluginFinding(slug: string, assets: WordpressPluginAssetEvidence[]): Promise<WordpressPluginFinding> {
@@ -72,8 +80,11 @@ async function buildPluginFinding(slug: string, assets: WordpressPluginAssetEvid
   const detectedVersion = chooseDetectedVersion(assets, latestKnownVersion);
   let status: WordpressPluginFinding["status"] = "unknown";
 
-  if (detectedVersion && latestKnownVersion && semver.valid(detectedVersion) && semver.valid(latestKnownVersion)) {
-    status = semver.lt(detectedVersion, latestKnownVersion) ? "possibly_outdated" : "current";
+  const comparableDetected = comparableVersion(detectedVersion);
+  const comparableLatest = comparableVersion(latestKnownVersion);
+
+  if (comparableDetected && comparableLatest) {
+    status = semver.lt(comparableDetected, comparableLatest) ? "possibly_outdated" : "current";
   }
 
   return {
