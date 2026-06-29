@@ -156,6 +156,17 @@ h1 {
   box-shadow: var(--shadow);
 }
 
+.diagnosis-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.diagnosis-form label span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .diagnosis-form input,
 .diagnosis-form select {
   min-width: 0;
@@ -166,6 +177,13 @@ h1 {
   padding: 12px 10px;
   color: var(--ink);
   background: #fff;
+}
+
+.form-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .diagnosis-form button {

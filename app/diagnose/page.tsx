@@ -137,21 +137,31 @@ export default function DiagnosePage() {
             </p>
           </div>
           <form className="diagnosis-form" onSubmit={submit}>
-            <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com" />
-            <select value={organizationType} onChange={(event) => setOrganizationType(event.target.value as OrganizationType)}>
-              {organizationOptions.map((option) => (
-                <option value={option.value} key={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <select value={primaryGoal} onChange={(event) => setPrimaryGoal(event.target.value as PrimaryGoal)}>
-              {goalOptions.map((option) => (
-                <option value={option.value} key={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <label>
+              <span>Website URL</span>
+              <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com" />
+            </label>
+            <label>
+              <span>Organization type</span>
+              <select value={organizationType} onChange={(event) => setOrganizationType(event.target.value as OrganizationType)}>
+                {organizationOptions.map((option) => (
+                  <option value={option.value} key={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Main website goal</span>
+              <select value={primaryGoal} onChange={(event) => setPrimaryGoal(event.target.value as PrimaryGoal)}>
+                {goalOptions.map((option) => (
+                  <option value={option.value} key={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="form-hint">These fields tune the diagnosis: expected pages, workflows, feature gaps, and rebuild scope.</p>
             <button disabled={loading}>{loading ? "Diagnosing..." : "Run diagnosis"}</button>
           </form>
         </section>
