@@ -381,8 +381,8 @@ function Fact({ label, value }: { label: string; value: string }) {
 function List({ items, empty }: { items: string[]; empty: string }) {
   return items.length ? (
     <ul className="report-list">
-      {items.slice(0, 12).map((item) => (
-        <li key={item}>{item}</li>
+      {items.slice(0, 12).map((item, index) => (
+        <li key={`${item}-${index}`}>{item}</li>
       ))}
     </ul>
   ) : (
