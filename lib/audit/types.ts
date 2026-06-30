@@ -22,6 +22,7 @@ export interface AuditIssue {
     | "platform_detection";
   recommendation: string;
   requiresAccess: boolean;
+  url?: string;
 }
 
 export interface PlatformDetection {
@@ -102,12 +103,68 @@ export interface UniversalAudit {
   headingStructure: Record<string, number>;
   internalLinks: number;
   externalLinks: number;
-  brokenLinks: Array<{ url: string; status?: number; error?: string }>;
+  brokenLinks: BrokenLink[];
   imagesTotal: number;
   imagesMissingAlt: number;
   cssFiles: number;
   jsFiles: number;
   totalDetectedAssets: number;
+  pagesAudited: number;
+  formsTotal: number;
+  formsMissingAction: number;
+  formsWithoutSubmit: number;
+  inputsMissingName: number;
+  inputsMissingLabel: number;
+}
+
+export interface BrokenLink {
+  url: string;
+  status?: number;
+  error?: string;
+  sourcePages: string[];
+}
+
+export interface FormAudit {
+  formsTotal: number;
+  formsMissingAction: number;
+  formsUsingGet: number;
+  formsUsingPost: number;
+  formsWithoutSubmit: number;
+  inputsTotal: number;
+  inputsMissingName: number;
+  inputsMissingLabel: number;
+}
+
+export interface PageAudit {
+  url: string;
+  finalUrl: string;
+  statusCode: number;
+  title?: string;
+  metaDescription?: string;
+  h1Count: number;
+  h1Texts: string[];
+  canonical?: string;
+  openGraphTags: number;
+  headingStructure: Record<string, number>;
+  internalLinks: number;
+  externalLinks: number;
+  imagesTotal: number;
+  imagesMissingAlt: number;
+  cssFiles: number;
+  jsFiles: number;
+  totalDetectedAssets: number;
+  forms: FormAudit;
+}
+
+export interface CrawlAudit {
+  scope: string;
+  limit: number;
+  pagesDiscovered: number;
+  pagesAudited: number;
+  pagesFailed: number;
+  linksDiscovered: number;
+  linksChecked: number;
+  sources: string[];
 }
 
 export interface SecurityHeadersAudit {
@@ -123,6 +180,8 @@ export interface ScoreBreakdown {
 export interface AuditResult {
   auditedAt: string;
   universal: UniversalAudit;
+  crawl: CrawlAudit;
+  pages: PageAudit[];
   securityHeaders: SecurityHeadersAudit;
   platform: PlatformDetection;
   wordpress?: WordpressAudit;

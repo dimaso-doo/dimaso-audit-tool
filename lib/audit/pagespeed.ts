@@ -1,15 +1,23 @@
 import type { PageSpeedResult, PageSpeedScores } from "./types";
 
-function categoryScore(data: any, key: string): number | undefined {
-  const value = data?.lighthouseResult?.categories?.[key]?.score;
+type PageSpeedApiResponse = {
+  lighthouseResult?: {
+    categories?: Record<string, { score?: unknown }>;
+    audits?: Record<string, { displayValue?: unknown }>;
+  };
+};
+
+function categoryScore(data: PageSpeedApiResponse, key: string): number | undefined {
+  const value = data.lighthouseResult?.categories?.[key]?.score;
   return typeof value === "number" ? Math.round(value * 100) : undefined;
 }
 
-function auditDisplay(data: any, id: string): string | undefined {
-  return data?.lighthouseResult?.audits?.[id]?.displayValue;
+function auditDisplay(data: PageSpeedApiResponse, id: string): string | undefined {
+  const value = data.lighthouseResult?.audits?.[id]?.displayValue;
+  return typeof value === "string" ? value : undefined;
 }
 
-function parseResult(data: any): PageSpeedResult {
+function parseResult(data: PageSpeedApiResponse): PageSpeedResult {
   return {
     performance: categoryScore(data, "performance"),
     accessibility: categoryScore(data, "accessibility"),

@@ -12,6 +12,14 @@ type PdfLinks = {
   objectUrl: string;
 };
 
+function issuesForPage(result: AuditResult, pageUrl: string) {
+  return result.issues.filter((issue) => issue.url === pageUrl);
+}
+
+function globalIssues(result: AuditResult) {
+  return result.issues.filter((issue) => !issue.url);
+}
+
 export default function AuditPage() {
   const [url, setUrl] = useState("https://example.com");
   const [result, setResult] = useState<AuditResult | null>(null);
@@ -107,7 +115,8 @@ export default function AuditPage() {
           <div>
             <h1>Public website audit</h1>
             <p className="lead">
-              Run a public-access audit for technical health, SEO basics, security headers, platform fingerprints, and optional PageSpeed data.
+              Run a public-access audit across discoverable pages on a domain for technical health, SEO basics, security headers,
+              platform fingerprints, and optional PageSpeed data.
             </p>
           </div>
           <form className="form" onSubmit={submit}>
@@ -123,7 +132,7 @@ export default function AuditPage() {
             <section className="report-actions no-print">
               <div>
                 <strong>Audit report</strong>
-                <span>Generate a client-ready PDF from the current audit result.</span>
+                <span>Generate a client-ready PDF from the current domain audit result.</span>
               </div>
               <button type="button" onClick={downloadPdf} disabled={pdfLoading}>
                 {pdfLoading ? "Preparing..." : pdfLinks ? "Regenerate PDF" : "Generate PDF"}
@@ -163,9 +172,12 @@ export default function AuditPage() {
 
             <section className="section columns">
               <div className="panel">
-                <SectionTitle icon="F" title="Audit facts" subtitle="Public homepage signals" />
+                <SectionTitle icon="F" title="Audit facts" subtitle="Public domain signals" />
                 <div className="facts">
                   <Fact label="Final URL" value={result.universal.finalUrl} />
+                  <Fact label="Scope" value={result.crawl.scope} />
+                  <Fact label="Pages audited" value={`${result.crawl.pagesAudited}/${result.crawl.pagesDiscovered}`} />
+                  <Fact label="Crawl sources" value={result.crawl.sources.join(", ")} />
                   <Fact label="HTTP status" value={String(result.universal.statusCode)} />
                   <Fact label="HTTPS" value={result.universal.https ? "Yes" : "No"} />
                   <Fact label="Platform" value={`${result.platform.platform} (${result.platform.confidence})`} />
@@ -176,7 +188,10 @@ export default function AuditPage() {
                   <Fact label="Open Graph tags" value={String(result.universal.openGraphTags)} />
                   <Fact label="Internal links" value={String(result.universal.internalLinks)} />
                   <Fact label="External links" value={String(result.universal.externalLinks)} />
-                  <Fact label="Broken checked links" value={String(result.universal.brokenLinks.length)} />
+                  <Fact label="Links checked" value={`${result.crawl.linksChecked}/${result.crawl.linksDiscovered}`} />
+                  <Fact label="Broken links" value={String(result.universal.brokenLinks.length)} />
+                  <Fact label="Forms" value={String(result.universal.formsTotal)} />
+                  <Fact label="Form fields missing labels" value={String(result.universal.inputsMissingLabel)} />
                   <Fact label="Images missing alt" value={`${result.universal.imagesMissingAlt}/${result.universal.imagesTotal}`} />
                   <Fact label="CSS files" value={String(result.universal.cssFiles)} />
                   <Fact label="JS files" value={String(result.universal.jsFiles)} />
@@ -200,10 +215,10 @@ export default function AuditPage() {
             </section>
 
             <section className="section">
-              <SectionTitle icon="I" title="Issues" subtitle="Findings, confidence, and recommendations" />
+              <SectionTitle icon="I" title="Domain issues" subtitle="Site-wide findings that are not tied to one page" />
               <div className="issues">
-                {result.issues.length ? (
-                  result.issues.map((issue, index) => (
+                {globalIssues(result).length ? (
+                  globalIssues(result).map((issue, index) => (
                     <article className={`issue ${issue.severity}`} key={`${issue.title}-${index}`}>
                       <div className="issue-title">
                         <span>{issue.title}</span>
@@ -215,11 +230,12 @@ export default function AuditPage() {
                         <span className="tag">{issue.confidence} confidence</span>
                         <span className="tag">{issue.source}</span>
                         <span className="tag">{issue.requiresAccess ? "requires access" : "public"}</span>
+                        {issue.url ? <span className="tag tag-url">{issue.url}</span> : null}
                       </div>
                     </article>
                   ))
                 ) : (
-                  <div className="panel">No issues detected by the v0.1 public checks.</div>
+                  <div className="panel">No domain-wide issues detected by the public checks.</div>
                 )}
               </div>
             </section>
@@ -269,6 +285,56 @@ export default function AuditPage() {
                 </div>
               </section>
             ) : null}
+
+            <section className="section">
+              <SectionTitle icon="P" title="Page reports" subtitle="Separate technical findings for every audited page" />
+              <div className="page-report-list">
+                {result.pages.map((page) => (
+                  <article className="page-report" key={page.finalUrl}>
+                    <header className="page-report-header">
+                      <div>
+                        <strong>{page.title || "Missing title"}</strong>
+                        <span>{page.finalUrl}</span>
+                      </div>
+                      <span className="tag">{issuesForPage(result, page.finalUrl).length} issues</span>
+                    </header>
+                    <div className="page-report-facts">
+                      <Fact label="HTTP" value={String(page.statusCode)} />
+                      <Fact label="Title" value={page.title || "Missing"} />
+                      <Fact label="Meta description" value={page.metaDescription ? "Present" : "Missing"} />
+                      <Fact label="H1 count" value={String(page.h1Count)} />
+                      <Fact label="Canonical" value={page.canonical || "Missing"} />
+                      <Fact label="Images missing alt" value={`${page.imagesMissingAlt}/${page.imagesTotal}`} />
+                      <Fact label="Links" value={`${page.internalLinks} internal, ${page.externalLinks} external`} />
+                      <Fact label="Forms" value={String(page.forms.formsTotal)} />
+                      <Fact label="Fields missing names" value={`${page.forms.inputsMissingName}/${page.forms.inputsTotal}`} />
+                      <Fact label="Fields missing labels" value={`${page.forms.inputsMissingLabel}/${page.forms.inputsTotal}`} />
+                    </div>
+                    <div className="issues page-report-issues">
+                      {issuesForPage(result, page.finalUrl).length ? (
+                        issuesForPage(result, page.finalUrl).map((issue, index) => (
+                          <article className={`issue ${issue.severity}`} key={`${page.finalUrl}-${issue.title}-${index}`}>
+                            <div className="issue-title">
+                              <span>{issue.title}</span>
+                              <span className="tag">{issue.severity}</span>
+                            </div>
+                            <p>{issue.recommendation}</p>
+                            <div className="tag-row">
+                              <span className="tag">{issue.category}</span>
+                              <span className="tag">{issue.confidence} confidence</span>
+                              <span className="tag">{issue.source}</span>
+                              <span className="tag">{issue.requiresAccess ? "requires access" : "public"}</span>
+                            </div>
+                          </article>
+                        ))
+                      ) : (
+                        <div className="page-clean">No page-specific issues detected.</div>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
 
             <section className="section columns">
               <div className="panel">

@@ -17,6 +17,14 @@ const categoryOrder: IssueCategory[] = [
   "Platform risk"
 ];
 
+function issuesForPage(result: AuditResult, pageUrl: string) {
+  return result.issues.filter((issue) => issue.url === pageUrl);
+}
+
+function globalIssues(result: AuditResult) {
+  return result.issues.filter((issue) => !issue.url);
+}
+
 function ascii(value: unknown) {
   return String(value ?? "")
     .normalize("NFKD")
@@ -30,12 +38,33 @@ function pdfEscape(value: string) {
   return ascii(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
+function plainSummaryLine(value: string) {
+  return value
+    .replace(/^#{1,6}\s*/, "")
+    .replace(/^\s*[-*]\s*/, "")
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)")
+    .trim();
+}
+
 function wrapText(text: string, maxChars: number) {
   const words = ascii(text).split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let current = "";
 
   for (const word of words) {
+    if (word.length > maxChars) {
+      if (current) {
+        lines.push(current);
+        current = "";
+      }
+      for (let index = 0; index < word.length; index += maxChars) {
+        lines.push(word.slice(index, index + maxChars));
+      }
+      continue;
+    }
+
     if (!current) {
       current = word;
     } else if (`${current} ${word}`.length <= maxChars) {
@@ -63,6 +92,12 @@ class PdfBuilder {
     this.addLine({ text: result.universal.finalUrl, size: 18, bold: true, gapAfter: 12 });
     this.addLine({ text: `Generated: ${new Date(result.auditedAt).toLocaleString("en-US")}`, size: 10, color: [96, 112, 128] });
     this.addLine({ text: `Overall score: ${result.scores.overall}/100`, size: 16, bold: true, color: [15, 118, 110], gapAfter: 16 });
+    this.addLine({
+      text: `${result.crawl.pagesAudited} pages audited. ${result.crawl.linksChecked} links checked.`,
+      size: 11,
+      color: [51, 65, 85],
+      gapAfter: 16
+    });
   }
 
   addSection(title: string) {
@@ -72,9 +107,18 @@ class PdfBuilder {
     this.y -= 44;
   }
 
+  addPageBreak() {
+    this.flushPage();
+    this.y = 750;
+  }
+
+  addGap(points: number) {
+    this.y -= points;
+  }
+
   addLine(line: PdfLine) {
     const size = line.size ?? 10;
-    const maxChars = size >= 14 ? 58 : 88;
+    const maxChars = size >= 14 ? 52 : size <= 8 ? 94 : 82;
     const color = line.color ?? [23, 33, 43];
     for (const wrapped of wrapText(line.text, maxChars)) {
       this.ensureSpace(size + 10);
@@ -86,6 +130,10 @@ class PdfBuilder {
 
   addKeyValue(label: string, value: unknown) {
     this.addLine({ text: `${label}: ${ascii(value)}`, size: 10 });
+  }
+
+  addCompactKeyValue(label: string, value: unknown) {
+    this.addLine({ text: `${label}: ${ascii(value)}`, size: 8, color: [51, 65, 85] });
   }
 
   finish() {
@@ -157,9 +205,13 @@ export function createAuditPdf(result: AuditResult) {
   for (const category of categoryOrder) {
     pdf.addKeyValue(category, `${result.scores.categories[category]}/100`);
   }
+  pdf.addGap(14);
 
   pdf.addSection("Audit facts");
   pdf.addKeyValue("Final URL", result.universal.finalUrl);
+  pdf.addKeyValue("Scope", result.crawl.scope);
+  pdf.addKeyValue("Pages audited", `${result.crawl.pagesAudited}/${result.crawl.pagesDiscovered}`);
+  pdf.addKeyValue("Crawl sources", result.crawl.sources.join(", "));
   pdf.addKeyValue("HTTP status", result.universal.statusCode);
   pdf.addKeyValue("Platform", `${result.platform.platform} (${result.platform.confidence})`);
   pdf.addKeyValue("Title", result.universal.title ?? "Missing");
@@ -167,19 +219,61 @@ export function createAuditPdf(result: AuditResult) {
   pdf.addKeyValue("H1 count", result.universal.h1Count);
   pdf.addKeyValue("Images missing alt", `${result.universal.imagesMissingAlt}/${result.universal.imagesTotal}`);
   pdf.addKeyValue("Links", `${result.universal.internalLinks} internal, ${result.universal.externalLinks} external`);
+  pdf.addKeyValue("Links checked", `${result.crawl.linksChecked}/${result.crawl.linksDiscovered}`);
+  pdf.addKeyValue("Broken links", result.universal.brokenLinks.length);
+  pdf.addKeyValue("Forms", result.universal.formsTotal);
+  pdf.addKeyValue("Form fields missing labels", result.universal.inputsMissingLabel);
 
   pdf.addSection("Summary");
   for (const line of result.summary.split(/\n+/).filter(Boolean).slice(0, 24)) {
-    pdf.addLine({ text: line, size: 10 });
+    const clean = plainSummaryLine(line);
+    if (clean) pdf.addLine({ text: clean, size: 10 });
   }
 
-  pdf.addSection("Issues");
-  if (result.issues.length === 0) {
-    pdf.addLine({ text: "No issues detected by the v0.1 public checks." });
+  pdf.addPageBreak();
+  pdf.addSection("Domain issues");
+  const siteIssues = globalIssues(result);
+  if (siteIssues.length === 0) {
+    pdf.addLine({ text: "No domain-wide issues detected by the public checks." });
   } else {
-    for (const issue of result.issues.slice(0, 18)) {
+    for (const issue of siteIssues.slice(0, 18)) {
       pdf.addLine({ text: `${issue.severity.toUpperCase()} - ${issue.title}`, size: 11, bold: true, color: [185, 28, 28] });
       pdf.addLine({ text: `${issue.category}. ${issue.recommendation}`, size: 9, color: [51, 65, 85], gapAfter: 6 });
+    }
+  }
+
+  pdf.addPageBreak();
+  pdf.addSection("Page reports");
+  for (const [index, page] of result.pages.entries()) {
+    const pageIssues = issuesForPage(result, page.finalUrl);
+    if (index > 0) pdf.addPageBreak();
+    pdf.addLine({ text: `Page ${index + 1} of ${result.pages.length}`, size: 12, bold: true, color: [15, 118, 110] });
+    pdf.addLine({ text: page.title || "Missing title", size: 14, bold: true, gapAfter: 4 });
+    pdf.addLine({ text: page.finalUrl, size: 8, color: [96, 112, 128], gapAfter: 4 });
+    pdf.addCompactKeyValue("HTTP", page.statusCode);
+    pdf.addCompactKeyValue("Meta description", page.metaDescription ? "Present" : "Missing");
+    pdf.addCompactKeyValue("H1 count", page.h1Count);
+    pdf.addCompactKeyValue("Canonical", page.canonical ?? "Missing");
+    pdf.addCompactKeyValue("Images missing alt", `${page.imagesMissingAlt}/${page.imagesTotal}`);
+    pdf.addCompactKeyValue("Links", `${page.internalLinks} internal, ${page.externalLinks} external`);
+    pdf.addLine({
+      text: `Forms ${page.forms.formsTotal} | missing action ${page.forms.formsMissingAction} | missing names ${page.forms.inputsMissingName}/${page.forms.inputsTotal} | missing labels ${page.forms.inputsMissingLabel}/${page.forms.inputsTotal}`,
+      size: 8,
+      color: [51, 65, 85],
+      gapAfter: 4
+    });
+
+    if (pageIssues.length === 0) {
+      pdf.addLine({ text: "No page-specific issues detected.", size: 9, color: [22, 101, 52], gapAfter: 8 });
+    } else {
+      pdf.addLine({ text: "Findings", size: 11, bold: true, gapAfter: 2 });
+      for (const issue of pageIssues.slice(0, 14)) {
+        pdf.addLine({ text: `${issue.severity.toUpperCase()} - ${issue.title}`, size: 10, bold: true, color: [185, 28, 28] });
+        pdf.addLine({ text: `${issue.category}. ${issue.recommendation}`, size: 8, color: [51, 65, 85], gapAfter: 5 });
+      }
+      if (pageIssues.length > 14) {
+        pdf.addLine({ text: `${pageIssues.length - 14} additional page findings omitted from this PDF page.`, size: 8, color: [96, 112, 128] });
+      }
     }
   }
 

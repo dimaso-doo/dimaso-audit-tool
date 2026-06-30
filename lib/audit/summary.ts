@@ -4,6 +4,22 @@ function factsForAi(result: Omit<AuditResult, "summary">) {
   return {
     finalUrl: result.universal.finalUrl,
     statusCode: result.universal.statusCode,
+    crawl: result.crawl,
+    pages: result.pages.map((page) => ({
+      finalUrl: page.finalUrl,
+      statusCode: page.statusCode,
+      title: page.title,
+      metaDescription: Boolean(page.metaDescription),
+      h1Count: page.h1Count,
+      imagesMissingAlt: page.imagesMissingAlt,
+      imagesTotal: page.imagesTotal,
+      forms: page.forms
+    })),
+    links: {
+      discovered: result.crawl.linksDiscovered,
+      checked: result.crawl.linksChecked,
+      broken: result.universal.brokenLinks.length
+    },
     scores: result.scores,
     platform: result.platform,
     wordpress: result.wordpress,
@@ -23,7 +39,7 @@ export async function summarizeAudit(result: Omit<AuditResult, "summary">): Prom
       .join("\n");
 
     return [
-      `Overall score is ${result.scores.overall}/100. Detected platform: ${result.platform.platform} (${result.platform.confidence} confidence).`,
+      `Overall score is ${result.scores.overall}/100 across ${result.crawl.pagesAudited} audited page(s). Detected platform: ${result.platform.platform} (${result.platform.confidence} confidence).`,
       topIssues ? `Priority items:\n${topIssues}` : "No high-priority public issues were detected in this MVP audit.",
       result.wordpress ? "WordPress findings are based on public fingerprints and require admin access for confirmation." : undefined
     ]

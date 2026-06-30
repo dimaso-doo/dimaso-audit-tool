@@ -383,6 +383,111 @@ h1 {
   font-size: 12px;
 }
 
+.tag-url {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.page-list,
+.page-report-list {
+  display: grid;
+  gap: 10px;
+}
+
+.link-list {
+  display: grid;
+  gap: 10px;
+}
+
+.page-row,
+.link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, auto);
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 10px 26px rgba(23, 33, 43, 0.05);
+}
+
+.page-row strong,
+.page-row span,
+.link-row strong {
+  display: block;
+}
+
+.link-row {
+  grid-template-columns: 1fr;
+}
+
+.link-row strong {
+  overflow-wrap: anywhere;
+}
+
+.page-row > div:first-child span {
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.page-report {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 10px 26px rgba(23, 33, 43, 0.05);
+}
+
+.page-report-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.page-report-header strong,
+.page-report-header span {
+  display: block;
+}
+
+.page-report-header > div span {
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.page-report-facts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.page-report-issues {
+  gap: 8px;
+}
+
+.page-clean {
+  padding: 12px;
+  border: 1px solid #d7eadf;
+  border-radius: 8px;
+  color: #166534;
+  background: #f0fdf4;
+  font-weight: 700;
+}
+
+.page-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -440,8 +545,18 @@ h1 {
   .intro,
   .columns,
   .facts,
+  .page-report-facts,
+  .page-row,
   .asset-row {
     grid-template-columns: 1fr;
+  }
+
+  .page-report-header {
+    display: grid;
+  }
+
+  .page-stats {
+    justify-content: flex-start;
   }
 
   .summary-grid {
